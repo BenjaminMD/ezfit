@@ -1,0 +1,41 @@
+data_gamma-Al2O3_P21-m
+_audit_creation_date              2015-07-08
+_audit_creation_method            'Materials Studio'
+_symmetry_space_group_name_H-M    'P21/M'
+_symmetry_Int_Tables_number       11
+_symmetry_cell_setting            monoclinic
+loop_
+_symmetry_equiv_pos_as_xyz
+  x,y,z
+  -x,y+1/2,-z
+  -x,-y,-z
+  x,-y+1/2,z
+_cell_length_a                    5.5870
+_cell_length_b                    8.4130
+_cell_length_c                    8.0680
+_cell_angle_alpha                 90.0000
+_cell_angle_beta                  90.5900
+_cell_angle_gamma                 90.0000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_U_iso_or_equiv
+_atom_site_adp_type
+_atom_site_occupancy
+Al1    Al    0.36700   0.07500   0.61200   0.00000  Uiso   1.00
+Al2    Al    0.11600   0.57900   0.86200   0.00000  Uiso   1.00
+O3     O     0.88900   0.40600   0.89900   0.00000  Uiso   1.00
+O4     O     0.60500   0.91700   0.61400   0.00000  Uiso   1.00
+O5     O     0.35700   0.40600   0.85300   0.00000  Uiso   1.00
+O6     O     0.13800   0.91600   0.63700   0.00000  Uiso   1.00
+Al7    Al    0.37700   0.75000   0.12600   0.00000  Uiso   1.00
+Al8    Al    0.87500   0.75000   0.12500   0.00000  Uiso   1.00
+Al9    Al    0.61500   0.75000   0.74500   0.00000  Uiso   1.00
+O10    O     0.88100   0.75000   0.87400   0.00000  Uiso   1.00
+O11    O     0.36400   0.75000   0.88900   0.00000  Uiso   1.00
+Al12   Al    0.86800   0.25000   0.49800   0.00000  Uiso   1.00
+O13    O     0.61400   0.25000   0.64000   0.00000  Uiso   1.00
+O14    O     0.13200   0.25000   0.62700   0.00000  Uiso   1.00
