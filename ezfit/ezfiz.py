@@ -1,8 +1,11 @@
+from distutils.command.config import config
 import diffpy.srfit.pdf.characteristicfunctions as CF
 from itertools import count
 from pathlib import Path
+import ezfit
 from typing import List
 import toml
+
 
 
 def _read_config(config_location):
@@ -104,10 +107,11 @@ class FitPDF():
         self.functions = create_functions(phases, nanoparticle_shapes)
 
     def update_recipe(self):
-        self.recipe = dw.create_recipe_from_files(
-            data_file=self.file,
-            meta_data=MetaData()(),
-            equation=self.equation,
-            cif_files=self.cif_files,
-            functions=self.functions
-        )
+        print(ezfit)
+        # self.recipe = ezfit.dw.create_recipe_from_files(
+        #     data_file=self.file,
+        #     meta_data=config['PDF'],
+        #     equation=self.equation,
+        #     cif_files=self.cif_files,
+        #     functions=self.functions
+        # )
