@@ -2,10 +2,9 @@ from distutils.command.config import config
 import diffpy.srfit.pdf.characteristicfunctions as CF
 from itertools import count
 from pathlib import Path
-import ezfit
 from typing import List
+from . import diffpy_wrap as dw
 import toml
-
 
 
 def _read_config(config_location):
@@ -69,7 +68,7 @@ def _fetch_function(phase, function):
 def create_cif_files(phases):
     cif_files = {}
     for phase in list(phases):
-        cif_files[f'{phase}'] = f'./CIFS/{phase.split("Γ")[0]}.cif'
+        cif_files[f'{phase}'] = f'./cifs/{phase.split("Γ")[0]}.cif'
 
     return cif_files
 
@@ -95,10 +94,12 @@ def create_functions(phases, nanoparticle_shapes):
 class FitPDF():
     def __init__(
             self,
+            file: str,
             phases: List[str],
             nanoparticle_shapes: List[str],
             config_location: str = None,
     ):
+        self.file = file
         phases = _parse_phases(self, phases)
 
         self.config = _read_config(config_location)
@@ -107,11 +108,11 @@ class FitPDF():
         self.functions = create_functions(phases, nanoparticle_shapes)
 
     def update_recipe(self):
-        print(ezfit)
-        # self.recipe = ezfit.dw.create_recipe_from_files(
-        #     data_file=self.file,
-        #     meta_data=config['PDF'],
-        #     equation=self.equation,
-        #     cif_files=self.cif_files,
-        #     functions=self.functions
-        # )
+        print(dw)
+        self.recipe = dw.create_recipe_from_files(
+             data_file=self.file,
+             meta_data=self.config['PDF'],
+             equation=self.equation,
+             cif_files=self.cif_files,
+             functions=self.functions
+        )
