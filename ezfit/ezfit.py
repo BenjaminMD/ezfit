@@ -1,5 +1,5 @@
-from distutils.command.config import config
 import diffpy.srfit.pdf.characteristicfunctions as CF
+from diffpy.srfit.fitbase import FitResults
 from itertools import count
 from pathlib import Path
 from typing import List
@@ -44,6 +44,7 @@ def _parse_phases(self, phases):
 
 
 def _fetch_function(phase, function):
+    print(f"Fetching {function} for {phase}")
     func_param = {
         'sphericalCF':
         (CF.sphericalCF, ['r', f'{phase}_psize']),
@@ -59,7 +60,7 @@ def _fetch_function(phase, function):
         (CF.shellCF, ['r', f'{phase}_radius', f'{phase}_thickness']),
         'shellCF2':
         (CF.shellCF, ['r', f'{phase}_a', f'{phase}_delta']),
-        'blukCF':
+        'bulfkCF':
         (lambda r: r * 1, ['r']),
         }
     return func_param[function]
@@ -116,3 +117,60 @@ class FitPDF():
              cif_files=self.cif_files,
              functions=self.functions
         )
+
+    def apply_restraints(self):
+        recipe = self.recipe
+        for phase in self.phases:
+
+            delta2 = getattr(self.recipe, f'{phase}_delta2')
+            recipe.restrain(delta2, lb=1, ub=5, sig=1e-3)
+            delta2.value = 3.0
+
+            scale = getattr(self.recipe, f'{phase}_scale')
+            recipe.restrain(scale, lb=0.01, ub=2, sig=1e-3)
+            scale.value = 0.5
+
+            for abc in ['a', 'b', 'c']:
+                try:
+                    lat = getattr(self.recipe, f'{phase}_{abc}')
+                    lb_lat = lat.value - 0.2
+                    ub_lat = lat.value + 0.2
+                    recipe.restrain(lat, lb=lb_lat, ub=ub_lat, sig=1e-3)
+                except AttributeError:
+                    pass
+
+            for func in self.functions.values():
+                params = func[1][1:]
+                for p in params:
+                    param = getattr(self.recipe, p)
+                    recipe.restrain(param, lb=0.1, ub=100, sig=1e-3)
+
+    def create_param_order(self):
+        ns = []
+        for phase in self.phases:
+            for func in self.functions.values():
+                for varn in func[1][1:]:
+                    ns.append(varn)
+        ns = [n for n in ns if n]
+        self.param_order = [
+            ['free', 'lat', 'scale'],
+            ['free', *ns],
+            ['free', 'adp', 'delta2'],
+            ['free', 'all']
+        ]
+
+    def run_fit(self):
+        self.update_recipe()
+        self.apply_restraints()
+        self.create_param_order()
+        dw.optimize_params_manually(
+            self.recipe,
+            self.param_order,
+            rmin=1,
+            rmax=8,
+            rstep=0.01,
+            ftol=1e-5,
+            print_step=True
+        )
+        res = FitResults(self.recipe)
+        res.printResults()
