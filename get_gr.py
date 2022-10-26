@@ -1,3 +1,6 @@
+import re 
+
+
 def get_gr(recipe):
     """
     Get the gr of a recipe and for each phase contribution

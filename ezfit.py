@@ -166,8 +166,8 @@ class FitPDF():
         dw.optimize_params_manually(
             self.recipe,
             self.param_order,
-            rmin=1,
-            rmax=8,
+            rmin=self.config['R_val']['rmin'],
+            rmax=self.config['R_val']['rmax'],
             rstep=0.01,
             ftol=1e-5,
             print_step=True
