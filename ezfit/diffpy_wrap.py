@@ -42,7 +42,6 @@ def _create_recipe(
         pg = PDFGenerator(name)
         pg.setStructure(crystal, periodic=True)
         pg.parallel(32)
-        #pg._calc.evaluatortype = 'OPTIMIZED'
         fc.addProfileGenerator(pg)
     if functions:
         for name, (f, argnames) in functions.items():
