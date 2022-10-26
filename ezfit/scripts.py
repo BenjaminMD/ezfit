@@ -13,7 +13,7 @@ class MetaData:
 
     def __call__(self) -> str:
         return(self.__dict__)
-#hallo#
+
     def fetch_function(self, phase, function):
         print(f"Fetching {function} for {phase}")
         func_param = {
