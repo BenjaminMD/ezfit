@@ -101,12 +101,12 @@ class FitPDF():
             config_location: str = None,
     ):
         self.file = file
-        phases = _parse_phases(self, phases)
+        self.phases = _parse_phases(self, phases)
 
         self.config = _read_config(config_location)
-        self.cif_files = create_cif_files(phases)
-        self.equation = create_equation(phases, nanoparticle_shapes)
-        self.functions = create_functions(phases, nanoparticle_shapes)
+        self.cif_files = create_cif_files(self.phases)
+        self.equation = create_equation(self.phases, nanoparticle_shapes)
+        self.functions = create_functions(self.phases, nanoparticle_shapes)
 
     def update_recipe(self):
         print(dw)
