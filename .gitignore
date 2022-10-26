@@ -1,3 +1,7 @@
 *gr
 *\dat\*
+<<<<<<< HEAD
 ./__pychache__/*
+=======
+./__pycache__/*
+>>>>>>> 57fe858da2cbe56c010f5281d472fe46e47593c9
