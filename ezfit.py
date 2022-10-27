@@ -7,21 +7,21 @@ from . import diffpy_wrap as dw
 import toml
 
 
-def _read_config(config_location):
+def _read_config(config_location: str = None):
     if config_location is None:
         print('No config file location provided. Finding in "./"')
         cwd = Path().resolve()
-        config_path = Path(cwd / 'FitPDF_config.toml')
+        config_path = list(Path(cwd).glob('*.toml'))[0]
     else:
         config_path = Path(config_location).expanduser().resolve()
-
     config: dict = toml.load(config_path)
+    return config
 
+
+def validate_file_locations(config: dict):
     for key, val in config['files'].items():
         if not Path(val).exists():
             raise FileNotFoundError(f"File {val} does not exist.")
-
-    return config
 
 
 def _phase_counter(self, phase):
@@ -104,6 +104,8 @@ class FitPDF():
         self.phases = _parse_phases(self, phases)
 
         self.config = _read_config(config_location)
+        validate_file_locations(self.config)
+
         self.cif_files = create_cif_files(self.phases)
         self.equation = create_equation(self.phases, nanoparticle_shapes)
         self.functions = create_functions(self.phases, nanoparticle_shapes)
