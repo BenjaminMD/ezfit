@@ -148,15 +148,15 @@ class FitPDF():
                     recipe.restrain(param, lb=0.1, ub=100, sig=1e-3)
 
     def create_param_order(self):
-        ns = []
+        nCF = []
         for phase in self.phases:
             for func in self.functions.values():
                 for varn in func[1][1:]:
                     ns.append(varn)
-        ns = [n for n in ns if n]
+        nCF = [n for n in nCF if n]
         self.param_order = [
             ['free', 'lat', 'scale'],
-            ['free', *ns],
+            ['free', *nCF],
             ['free', 'adp', 'delta2'],
             ['free', 'all']
         ]
