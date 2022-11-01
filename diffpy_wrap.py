@@ -229,6 +229,9 @@ def optimize_params_manually(
     fc_name: str = "PDF",
     **kwargs
 ) -> None:
+
+    from warnings import warn
+    warn("Felix Fabio? Do we really need the functionality to fix a step during the fit or do we just want to free one by one", DeprecationWarning)
     n = len(steps)
     fc: FitContribution = getattr(recipe, fc_name)
     p: Profile = fc.profile
