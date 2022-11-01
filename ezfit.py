@@ -152,7 +152,7 @@ class FitPDF():
         for phase in self.phases:
             for func in self.functions.values():
                 for varn in func[1][1:]:
-                    ns.append(varn)
+                    nCF.append(varn)
         nCF = [n for n in nCF if n]
         self.param_order = [
             ['free', 'lat', 'scale'],
