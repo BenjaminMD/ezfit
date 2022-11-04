@@ -1,9 +1,9 @@
 [PDF]
-qbroad = 0.011
-qdamp =  0.01
+qbroad = 0.01126
+qdamp =  0.01521
 [R_val]
-rmin = 0.5
-rmax = 10
+rmin = 1
+rmax = 40
 [files]
-cifs = './cifs/'
-out = './results/'
+cifs = './CIFS/'
+out = './Results/'

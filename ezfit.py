@@ -9,7 +9,6 @@ import toml
 
 def _read_config(config_location: str = None):
     if config_location is None:
-        print('No config file location provided. Finding in "./"')
         cwd = Path().resolve()
         config_path = list(Path(cwd).glob('*.toml'))[0]
     else:
@@ -66,10 +65,10 @@ def _fetch_function(phase, function):
     return func_param[function]
 
 
-def create_cif_files(phases):
+def create_cif_files(phases, config):
     cif_files = {}
     for phase in list(phases):
-        cif_files[f'{phase}'] = f'./cifs/{phase.split("Γ")[0]}.cif'
+        cif_files[f'{phase}'] = f'./{config["files"]["cifs"]}/{phase.split("Γ")[0]}.cif'
 
     return cif_files
 
@@ -106,7 +105,7 @@ class FitPDF():
         self.config = _read_config(config_location)
         validate_file_locations(self.config)
 
-        self.cif_files = create_cif_files(self.phases)
+        self.cif_files = create_cif_files(self.phases, self.config)
         self.equation = create_equation(self.phases, nanoparticle_shapes)
         self.functions = create_functions(self.phases, nanoparticle_shapes)
 
