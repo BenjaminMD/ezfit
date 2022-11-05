@@ -171,7 +171,8 @@ class FitPDF():
             rmax=self.config['R_val']['rmax'],
             rstep=0.01,
             ftol=1e-5,
-            print_step=True
+            print_step=self.config['Verbose']['step'],
         )
         res = FitResults(self.recipe)
-        res.printResults()
+        if self.config['Verbose']['results']:
+            res.printResults()

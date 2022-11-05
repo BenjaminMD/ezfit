@@ -7,3 +7,6 @@ rmax = 40
 [files]
 cifs = './CIFS/'
 out = './Results/'
+[Verbose]
+step = 'False'
+results = 'False'
