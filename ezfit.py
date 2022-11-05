@@ -43,7 +43,6 @@ def _parse_phases(self, phases):
 
 
 def _fetch_function(phase, function):
-    print(f"Fetching {function} for {phase}")
     func_param = {
         'sphericalCF':
         (CF.sphericalCF, ['r', f'{phase}_psize']),
@@ -110,7 +109,6 @@ class FitPDF():
         self.functions = create_functions(self.phases, nanoparticle_shapes)
 
     def update_recipe(self):
-        print(dw)
         self.recipe = dw.create_recipe_from_files(
              data_file=self.file,
              meta_data=self.config['PDF'],

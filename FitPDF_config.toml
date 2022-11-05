@@ -8,5 +8,5 @@ rmax = 40
 cifs = './CIFS/'
 out = './Results/'
 [Verbose]
-step = 'False'
-results = 'False'
+step = false
+results = false
