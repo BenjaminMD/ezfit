@@ -167,7 +167,7 @@ class FitPDF():
             self.param_order,
             rmin=self.config['R_val']['rmin'],
             rmax=self.config['R_val']['rmax'],
-            rstep=0.01,
+            rstep=self.config['R_val']['rstep'],
             ftol=1e-5,
             print_step=self.config['Verbose']['step'],
         )
