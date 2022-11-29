@@ -116,6 +116,20 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
             fixed=True,
             tags=_get_tags(name, "xyz")
         )
+    for atom in atoms:
+        atom_type = filter(lambda x: x.isalpha(), atom.name)
+        atom_type = ''.join(atom_type)
+        tag_list = [
+                *_get_tags(name, "occ"),
+                *_get_tags(name, f"occ{atom_type}")
+            ]
+        par = atom.occ
+        recipe.addVar(
+            par,
+            name=_get_name(name, atom.name, "occ"),
+            fixed=True,
+            tags=np.unique(tag_list)
+        ).boundRange(0.)
     return
 
 
