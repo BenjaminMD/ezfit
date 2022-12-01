@@ -16,7 +16,7 @@ def _create_recipe(
         profile: Profile,
         fc_name: str = "PDF"
 ) -> FitRecipe:
-    """Create the FitRecipe object.
+    """Create the FitRecipe object
 
     Parameters
     ----------
