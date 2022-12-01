@@ -19,17 +19,13 @@ def _create_recipe(
         profile: Profile,
         fc_name: str = "PDF"
 ) -> FitRecipe:
-
     fr = FitRecipe()
     fc = FitContribution(fc_name)
     for name, crystal in crystals.items():
         pg = PDFGenerator(name)
         pg.setStructure(crystal, periodic=True)
-<<<<<<< HEAD:diffpy_wrap.py
-        pg.parallel(32)  # pg._calc.evaluatortype = 'OPTIMIZED'
-=======
         pg.parallel(32)
->>>>>>> 9d78f14a1585e7903dac2b970d31e713dec3c24b:ezfit/diffpy_wrap.py
+
         fc.addProfileGenerator(pg)
     if functions:
         for name, (f, argnames) in functions.items():
