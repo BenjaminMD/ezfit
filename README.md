@@ -1,2 +1,2 @@
 # ezfit
-wrap for diffpy to make very quick fits 
+wrap for diffpy cmi to make very quick fits 

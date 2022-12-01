@@ -9,40 +9,23 @@ from pyobjcryst import loadCrystal
 from pyobjcryst.crystal import Crystal
 from scipy.optimize import least_squares
 
+
 def _create_recipe(
         equation: str,
         crystals: typing.Dict[str, Crystal],
-        functions: typing.Dict[str, typing.Tuple[typing.Callable, typing.List[str]]],
+        functions: typing.Dict[
+                str, typing.Tuple[typing.Callable, typing.List[str]]
+            ],
         profile: Profile,
         fc_name: str = "PDF"
 ) -> FitRecipe:
-    """Create the FitRecipe object
-
-    Parameters
-    ----------
-    equation :
-        The equation of G(r).
-    crystals :
-        A mapping from the name of variable in the equation to the crystal structure for PDF calculation.
-    functions :
-        A mapping from the name of variable in the equation to the python function for PDF calculation.
-        The first argument of the function is the array of r, the other arguments are the parameters.
-    profile :
-        The data profile that contains both the metadata and the data.
-    fc_name :
-        The name of the FitContribution in the FitRecipe. Default "PDF".
-
-    Returns
-    -------
-    A FitRecipe object.
-    """
     fr = FitRecipe()
     fc = FitContribution(fc_name)
     for name, crystal in crystals.items():
         pg = PDFGenerator(name)
         pg.setStructure(crystal, periodic=True)
         pg.parallel(32)
-        #pg._calc.evaluatortype = 'OPTIMIZED'
+
         fc.addProfileGenerator(pg)
     if functions:
         for name, (f, argnames) in functions.items():
@@ -54,50 +37,14 @@ def _create_recipe(
 
 
 def _get_tags(phase: str, param: str) -> typing.List[str]:
-    """Get the tag names.
-
-    Parameters
-    ----------
-    phase
-    param
-
-    Returns
-    -------
-
-    """
     return [param, phase, "{}_{}".format(phase, param)]
 
 
 def _get_name(*args: str) -> str:
-    """Get the name of the variable.
-
-    Parameters
-    ----------
-    args
-
-    Returns
-    -------
-
-    """
     return "_".join(args)
 
 
 def _rename_par(name: str, atoms: list) -> str:
-    """Rename of the name of a parameter by replacing the index of the atom in the name by the label of
-    the atom and revert the order of coordinates and atom name.
-
-    Used for the space group constrained parameters. For example, "x_0" where atom index 0 is Ni will become
-    "Ni0_x" after renamed. If the name can not renamed, return the original name.
-
-    Parameters
-    ----------
-    name
-    atoms
-
-    Returns
-    -------
-
-    """
     parts = name.split("_")
     np = len(parts)
     na = len(atoms)
@@ -108,17 +55,6 @@ def _rename_par(name: str, atoms: list) -> str:
 
 
 def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
-    """Add parameters in the PDFGenerator.
-
-    Parameters
-    ----------
-    recipe
-    pg
-
-    Returns
-    -------
-
-    """
     name: str = pg.name
     if not meta_data:
         print('No meta data found for {}'.format(name))
@@ -171,7 +107,7 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
             tags=_get_tags(name, "adp")
         ).boundRange(0.)
     xyzpars = pg.phase.sgpars.xyzpars
-    
+
     for par in xyzpars:
         par_name = _rename_par(par.name, atoms)
         recipe.addVar(
@@ -180,6 +116,20 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
             fixed=True,
             tags=_get_tags(name, "xyz")
         )
+    for atom in atoms:
+        atom_type = filter(lambda x: x.isalpha(), atom.name)
+        atom_type = ''.join(atom_type)
+        tag_list = [
+                *_get_tags(name, "occ"),
+                *_get_tags(name, f"occ{atom_type}")
+            ]
+        par = atom.occ
+        recipe.addVar(
+            par,
+            name=_get_name(name, atom.name, "occ"),
+            fixed=True,
+            tags=np.unique(tag_list)
+        ).boundRange(0.)
     return
 
 
@@ -189,19 +139,6 @@ def _add_params_in_fc(
         names: typing.List[str],
         tags: typing.List[str]
 ) -> None:
-    """Add parameters in the FitContribution.
-
-    Parameters
-    ----------
-    recipe
-    fc
-    names
-    tags
-
-    Returns
-    -------
-
-    """
     for name in names:
         par = getattr(fc, name)
         recipe.addVar(
@@ -215,29 +152,14 @@ def _add_params_in_fc(
 
 def _initialize_recipe(
         recipe: FitRecipe,
-        functions: typing.Dict[str, typing.Tuple[typing.Callable, typing.List[str]]],
+        functions: typing.Dict[
+                str, typing.Tuple[typing.Callable, typing.List[str]]
+            ],
         crystals: typing.Dict[str, Crystal],
         fc_name: str = "PDF",
-        meta_data = None
+        meta_data=None
 ) -> None:
-    """Initialize the FitRecipe object with variables.
 
-    The parameters are the scale of the PDF, the delta2 parameter in the correction of correlated motions,
-    the atomic displacement parameters (ADPs) of the symmetric unique atoms, the x, y, z positions of the
-    symmetric unique atoms under the constraint of the symmetry and the parameters in the functions registered
-    in the FitContribution.
-
-    Parameters
-    ----------
-    recipe
-    functions
-    crystals
-    fc_name
-
-    Returns
-    -------
-
-    """
     fc: FitContribution = getattr(recipe, fc_name)
     if functions:
         for name, (_, argnames) in functions.items():
@@ -253,33 +175,12 @@ def create_recipe_from_files(
         equation: str,
         cif_files: typing.Dict[str, str],
         data_file: typing.Dict[str, str],
-        functions: typing.Dict[str, typing.Tuple[typing.Callable, typing.List[str]]] = {},
+        functions: typing.Dict[
+                str, typing.Tuple[typing.Callable, typing.List[str]]
+            ] = {},
         meta_data: typing.Dict[str, typing.Union[str, int, float]] = None,
         fc_name: str = "PDF"
 ) -> FitRecipe:
-    """Create the FitRecipe object.
-
-    Parameters
-    ----------
-    equation :
-        The equation of G(r).
-    cif_files :
-        A mapping from the name of variable in the equation to cif files of the crystal structure for PDF
-        calculation.
-    functions :
-        A mapping from the name of variable in the equation to the python function for PDF calculation.
-        The first argument of the function is the array of r, the other arguments are the parameters.
-    data_file :
-        The data file that be loaded into the data profile that contains both the metadata and the data.
-    meta_data :
-        Additional metadata to add into the data profile.
-    fc_name :
-        The name of the FitContribution in the FitRecipe. Default "PDF".
-
-    Returns
-    -------
-    A FitRecipe object.
-    """
     if meta_data is None:
         meta_data = {}
     crystals = {n: loadCrystal(f) for n, f in cif_files.items()}
@@ -287,10 +188,14 @@ def create_recipe_from_files(
     pp.parseFile(data_file)
     profile = Profile()
     profile.loadParsedData(pp)
-    profile.meta.update(meta_data)        
-    recipe, pg = _create_recipe(equation, crystals, functions, profile, fc_name=fc_name)
-    _initialize_recipe(recipe, functions, crystals, fc_name=fc_name, meta_data = meta_data)
-    return recipe#, pg
+    profile.meta.update(meta_data)
+    recipe, pg = _create_recipe(
+        equation, crystals, functions, profile, fc_name=fc_name
+    )
+    _initialize_recipe(
+        recipe, functions, crystals, fc_name=fc_name, meta_data=meta_data
+    )
+    return recipe  # , pg
 
 
 def optimize_params(
@@ -303,32 +208,7 @@ def optimize_params(
     fc_name: str = "PDF",
     **kwargs
 ) -> None:
-    """Optimize the parameters in the FitRecipe object using least square regression.
 
-    Parameters
-    ----------
-    recipe :
-        The FitRecipe object.
-    steps :
-        A list of lists of parameter names in the recipe. They will be free and refined one batch after another.
-        Usually, the scale, lattice should be refined before the APD and XYZ.
-    rmin :
-        The minimum r in the range for refinement. If None, use the minimum r in the data.
-    rmax :
-        The maximum r in the range for refinement. If None, use the maximum r in the data.
-    rstep :
-        The step of r in the range for refinement. If None, use the step of r in the data.
-    print_step :
-        If True, print out the refinement step. Default True.
-    fc_name :
-        The name of the FitContribution in the FitRecipe. Default "PDF".
-    kwargs :
-        The kwargs for the `scipy.optimize.least_square`.
-
-    Returns
-    -------
-    None.
-    """
     n = len(steps)
     fc: FitContribution = getattr(recipe, fc_name)
     p: Profile = fc.profile
@@ -344,7 +224,12 @@ def optimize_params(
                 ),
                 end="\r"
             )
-        least_squares(recipe.residual, recipe.getValues(), bounds=recipe.getBounds2(), **kwargs)
+        least_squares(
+            recipe.residual,
+            recipe.getValues(),
+            bounds=recipe.getBounds2(),
+            **kwargs
+        )
     return
 
 
@@ -358,32 +243,9 @@ def optimize_params_manually(
     fc_name: str = "PDF",
     **kwargs
 ) -> None:
-    """Optimize the parameters in the FitRecipe object using least square regression.
 
-    Parameters
-    ----------
-    recipe :
-        The FitRecipe object.
-    steps :
-        A list of lists of parameter names in the recipe. They will be free and refined one batch after another.
-        Usually, the scale, lattice should be refined before the APD and XYZ.
-    rmin :
-        The minimum r in the range for refinement. If None, use the minimum r in the data.
-    rmax :
-        The maximum r in the range for refinement. If None, use the maximum r in the data.
-    rstep :
-        The step of r in the range for refinement. If None, use the step of r in the data.
-    print_step :
-        If True, print out the refinement step. Default True.
-    fc_name :
-        The name of the FitContribution in the FitRecipe. Default "PDF".
-    kwargs :
-        The kwargs for the `scipy.optimize.least_square`.
-
-    Returns
-    -------
-    None.
-    """
+    from warnings import warn
+    warn("Felix Fabio? Do we really need the functionality to fix a step during the fit or do we just want to free one by one", DeprecationWarning)
     n = len(steps)
     fc: FitContribution = getattr(recipe, fc_name)
     p: Profile = fc.profile
@@ -398,7 +260,12 @@ def optimize_params_manually(
                 ),
                 end="\r"
             )
-        least_squares(recipe.residual, recipe.getValues(), bounds=recipe.getBounds2(), **kwargs)
+        least_squares(
+            recipe.residual,
+            recipe.getValues(),
+            bounds=recipe.getBounds2(),
+            **kwargs
+        )
     return
 
 
@@ -420,7 +287,7 @@ def save_results(
     file_stem :
         The stem of the filename.
     pg_names :
-        The name of the PDFGenerators (it will also be the name of the structures) to save. If None, not to save.
+        The name of the PDFGenerators to save. If None, not to save.
     fc_name
         The name of the FitContribution in the FitRecipe. Default "PDF".
     Returns
@@ -447,7 +314,12 @@ def save_results(
     return
 
 
-def visualize_fits(ax, recipe: FitRecipe, xlim: typing.Tuple = None, fc_name: str = "PDF") -> None:
+def visualize_fits(
+            ax,
+            recipe: FitRecipe,
+            xlim: typing.Tuple = None,
+            fc_name: str = "PDF"
+        ) -> None:
     """Visualize the fits in the FitRecipe object.
 
     Parameters
@@ -483,49 +355,4 @@ def visualize_fits(ax, recipe: FitRecipe, xlim: typing.Tuple = None, fc_name: st
     ax.set_xlabel(r"$r (\AA)$")
     ax.set_ylabel(r"$G (\AA^{-2})$")
     ax.legend(loc=1)
-    return
-
-
-def save_results(
-        recipe: FitRecipe,
-        directory: str,
-        file_stem: str,
-        pg_names: typing.List[str] = None,
-        fc_name: str = "PDF"
-) -> None:
-    """Save the parameters, fits and structures in the FitRecipe object.
-
-    Parameters
-    ----------
-    recipe :
-        The FitRecipe object.
-    directory :
-        The directory to output the files.
-    file_stem :
-        The stem of the filename.
-    pg_names :
-        The name of the PDFGenerators (it will also be the name of the structures) to save. If None, not to save.
-    fc_name
-        The name of the FitContribution in the FitRecipe. Default "PDF".
-    Returns
-    -------
-    None.
-    """
-    d_path = Path(directory)
-    d_path.mkdir(parents=True, exist_ok=True)
-    f_path = d_path.joinpath(file_stem)
-    fr = FitResults(recipe)
-    fr.saveResults(str(f_path.with_suffix(".res")))
-    fc: FitContribution = getattr(recipe, fc_name)
-    profile: Profile = fc.profile
-    profile.savetxt(str(f_path.with_suffix(".fgr")))
-    if pg_names is not None:
-        for pg_name in pg_names:
-            pg: PDFGenerator = getattr(fc, pg_name)
-            stru: Crystal = pg.stru
-            cif_path = f_path.with_name(
-                "{}_{}".format(f_path.stem, pg_name)
-            ).with_suffix(".cif")
-            with cif_path.open("w") as f:
-                stru.CIFOutput(f)
     return

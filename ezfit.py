@@ -7,21 +7,20 @@ from . import diffpy_wrap as dw
 import toml
 
 
-def _read_config(config_location):
+def _read_config(config_location: str = None):
     if config_location is None:
-        print('No config file location provided. Finding in "./"')
         cwd = Path().resolve()
-        config_path = Path(cwd / 'FitPDF_config.toml')
+        config_path = list(Path(cwd).glob('*.toml'))[0]
     else:
         config_path = Path(config_location).expanduser().resolve()
-
     config: dict = toml.load(config_path)
+    return config
 
+
+def validate_file_locations(config: dict):
     for key, val in config['files'].items():
         if not Path(val).exists():
             raise FileNotFoundError(f"File {val} does not exist.")
-
-    return config
 
 
 def _phase_counter(self, phase):
@@ -44,7 +43,6 @@ def _parse_phases(self, phases):
 
 
 def _fetch_function(phase, function):
-    print(f"Fetching {function} for {phase}")
     func_param = {
         'sphericalCF':
         (CF.sphericalCF, ['r', f'{phase}_psize']),
@@ -66,10 +64,10 @@ def _fetch_function(phase, function):
     return func_param[function]
 
 
-def create_cif_files(phases):
+def create_cif_files(phases, config):
     cif_files = {}
     for phase in list(phases):
-        cif_files[f'{phase}'] = f'./cifs/{phase.split("Γ")[0]}.cif'
+        cif_files[f'{phase}'] = f'./{config["files"]["cifs"]}/{phase.split("Γ")[0]}.cif'
 
     return cif_files
 
@@ -104,12 +102,13 @@ class FitPDF():
         self.phases = _parse_phases(self, phases)
 
         self.config = _read_config(config_location)
-        self.cif_files = create_cif_files(self.phases)
+        validate_file_locations(self.config)
+
+        self.cif_files = create_cif_files(self.phases, self.config)
         self.equation = create_equation(self.phases, nanoparticle_shapes)
         self.functions = create_functions(self.phases, nanoparticle_shapes)
 
     def update_recipe(self):
-        print(dw)
         self.recipe = dw.create_recipe_from_files(
              data_file=self.file,
              meta_data=self.config['PDF'],
@@ -146,15 +145,15 @@ class FitPDF():
                     recipe.restrain(param, lb=0.1, ub=100, sig=1e-3)
 
     def create_param_order(self):
-        ns = []
+        nCF = []
         for phase in self.phases:
             for func in self.functions.values():
                 for varn in func[1][1:]:
-                    ns.append(varn)
-        ns = [n for n in ns if n]
+                    nCF.append(varn)
+        nCF = [n for n in nCF if n]
         self.param_order = [
             ['free', 'lat', 'scale'],
-            ['free', *ns],
+            ['free', *nCF],
             ['free', 'adp', 'delta2'],
             ['free', 'all']
         ]
@@ -168,9 +167,10 @@ class FitPDF():
             self.param_order,
             rmin=self.config['R_val']['rmin'],
             rmax=self.config['R_val']['rmax'],
-            rstep=0.01,
+            rstep=self.config['R_val']['rstep'],
             ftol=1e-5,
-            print_step=True
+            print_step=self.config['Verbose']['step'],
         )
         res = FitResults(self.recipe)
-        res.printResults()
+        if self.config['Verbose']['results']:
+            res.printResults()
