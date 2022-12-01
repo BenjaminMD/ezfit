@@ -1,2 +1,6 @@
 *gr
 *\dat\*
+./__pychache__/*
+./.vscode/*
+*pyc
+__pycache__/diffpy_wrap.cpython-37.pyc
