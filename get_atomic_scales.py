@@ -31,14 +31,29 @@ def get_cell_volume(cif_file):
 def get_sym_constraints(cif_file):
     with open(cif_file, 'r') as f:
         lines = f.read().split('\n')
-    xyz_index = [i for i, l in enumerate(lines) if l.startswith('loop')]
-    xyz_slice = slice(xyz_index[0]+2, xyz_index[1])
-    xyz_lines = lines[xyz_slice]
+    xyz_index1 = [i for i, l in enumerate(lines) if '_xyz' in l]
+    xyz_index2 = [i for i, l in enumerate(lines) if i > xyz_index1[0] and 'loop_' in l]
+    xyz_slice = (xyz_index1[0], xyz_index2[0])
+    #xyz_lines = lines[xyz_slice]
+
     # clean up the xyz lines remove tabs, commas, and quotes
-    for ch in [' ', '\t', "'"]:
-        xyz_lines = [line.replace(ch, '') for line in xyz_lines]
-    transforms = [lambda x, y, z, coef=i: eval(f'[{coef}]') for i in xyz_lines]
-    return transforms
+    # for ch in [' ', '\t', "'"]:
+    #     xyz_lines = [line.replace(ch, '') for line in xyz_lines]
+    # transforms = [lambda x, y, z, coef=i: eval(f'[{coef}]') for i in xyz_lines]
+    return xyz_slice
+
+# def get_sym_constraints(cif_file):
+#     with open(cif_file, 'r') as f:
+#         lines = f.read().split('\n')
+#     xyz_index = [i for i, l in enumerate(lines) if l.startswith('loop')]
+#     xyz_slice = slice(xyz_index[0]+2, xyz_index[1])
+#     xyz_lines = lines[xyz_slice]
+    
+#     # clean up the xyz lines remove tabs, commas, and quotes
+#     for ch in [' ', '\t', "'"]:
+#         xyz_lines = [line.replace(ch, '') for line in xyz_lines]
+#     transforms = [lambda x, y, z, coef=i: eval(f'[{coef}]') for i in xyz_lines]
+#     return transforms
 
 
 def get_scale(recipe):
