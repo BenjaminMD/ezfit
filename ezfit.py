@@ -67,7 +67,7 @@ def _fetch_function(phase, function):
 def create_cif_files(phases, config):
     cif_files = {}
     for phase in list(phases):
-        cif_files[f'{phase}'] = f'./{config["files"]["cifs"]}/{phase.split("Γ")[0]}.cif'
+        cif_files[f'{phase}'] = f'{config["files"]["cifs"]}{phase.split("Γ")[0]}.cif'
 
     return cif_files
 
@@ -126,8 +126,8 @@ class FitPDF():
             delta2.value = 3.0
 
             scale = getattr(self.recipe, f'{phase}_scale')
-            recipe.restrain(scale, lb=0.01, ub=2, sig=1e-3)
-            scale.value = 0.5
+            recipe.restrain(scale, lb=0.1, ub=2, sig=1e-3)
+            scale.value = 1
 
             for abc in ['a', 'b', 'c']:
                 try:
@@ -142,7 +142,7 @@ class FitPDF():
                 params = func[1][1:]
                 for p in params:
                     param = getattr(self.recipe, p)
-                    recipe.restrain(param, lb=0.1, ub=100, sig=1e-3)
+                    recipe.restrain(param, lb=10, ub=100, sig=1e-3)
 
     def create_param_order(self):
         nCF = []
@@ -155,7 +155,6 @@ class FitPDF():
             ['free', 'lat', 'scale'],
             ['free', *nCF],
             ['free', 'adp', 'delta2'],
-            ['free', 'all']
         ]
 
     def run_fit(self):
