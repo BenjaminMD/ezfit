@@ -2,9 +2,11 @@ from scipy.constants import c, e, m_e, epsilon_0, pi
 from glob import glob
 import numpy as np
 import pandas as pd
-
+import os 
+import re
 
 def get_f1(element, keV):
+    print(os.getcwd())
     file_path = glob(f'./rsc/f1/*{element}*')[0]
     _, element_keV, element_f1 = np.loadtxt(
         file_path, skiprows=1, delimiter=',').T
@@ -59,7 +61,7 @@ def get_fract_cord(cif_file):
     with open(cif_file, 'r') as f:
         lines = f.read().split('\n')
     site_ind = [
-        ind for ind, line in enumerate(lines) if line.startswith('_atom_site_')
+        ind for ind, line in enumerate(lines) if '_atom_site_' in line
     ]
     site_slice = slice(site_ind[0], site_ind[-1]+1)
     col_names = [line.split('_atom_site_')[-1] for line in lines[site_slice]]
@@ -67,10 +69,9 @@ def get_fract_cord(cif_file):
     number_symb_ind = [l_site + i for i, line in enumerate(lines[l_site + 1:])
                        if '#' in line]
     if number_symb_ind:
-        data = [line.split() for line in lines[site_ind[-1]+1:
-                number_symb_ind[0]+1]]
+        data = [line.split() for line in lines[site_ind[-1]+1:number_symb_ind[0]] if line != '']
     else:
-        data = [line.split() for line in lines[site_ind[-1]+1:]]
+        data = [line.split() for line in lines[site_ind[-1]+1:] if line != '']
     df = pd.DataFrame(data, columns=col_names)
     return df
 
@@ -85,6 +86,11 @@ def gen_site_pos(df, transforms):
         x, y, z = [float(i.split('(')[0]) for i in [x, y, z]]
         frac = np.unique([t(x, y, z) for t in transforms], axis=0)
         frac = frac % 1
+        for i, (x, y, z) in enumerate(frac):
+            x = round(x, 4)
+            y = round(y, 4)
+            z = round(z, 4)
+            frac[i] = [x, y, z]
         frac = np.unique(frac, axis=0)
         frac_label[lab] = frac
     return frac_label
@@ -117,7 +123,10 @@ def get_atomic_scales(cif_file, phases, keV):
     df = get_fract_cord(cif_file)
     frac_label = gen_site_pos(df, transforms)
     atom_multiplicity = count_atom(frac_label, df)
-    f1 = {label: get_f1(label, keV) for label in df.label.unique()}
+    # remove numerical characters from df.label.unique()
+    atom = [re.sub(r'\d+', '', i) for i in df.label.unique()]
+    print(atom)
+    f1 = {label: get_f1(at, keV) for at, label in zip(atom, df.label.unique())}
     get_scale(phases, atom_multiplicity, cell_volume, f1)
 
 def main():
