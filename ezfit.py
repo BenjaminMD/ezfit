@@ -6,6 +6,11 @@ from typing import List
 from . import diffpy_wrap as dw
 import toml
 
+# temporary
+def _get_name(*args: str) -> str:
+    return "_".join(args)
+# temporary
+
 
 def _read_config(config_location: str = None):
     if config_location is None:
@@ -58,7 +63,7 @@ def _fetch_function(phase, function):
         (CF.shellCF, ['r', f'{phase}_radius', f'{phase}_thickness']),
         'shellCF2':
         (CF.shellCF, ['r', f'{phase}_a', f'{phase}_delta']),
-        'bulfkCF':
+        'bulkCF':
         (lambda r: r * 1, ['r']),
         }
     return func_param[function]
@@ -109,7 +114,7 @@ class FitPDF():
         self.functions = create_functions(self.phases, nanoparticle_shapes)
 
     def update_recipe(self):
-        self.recipe = dw.create_recipe_from_files(
+        self.recipe, self.pg = dw.create_recipe_from_files(
              data_file=self.file,
              meta_data=self.config['PDF'],
              equation=self.equation,
@@ -118,6 +123,7 @@ class FitPDF():
         )
 
     def apply_restraints(self):
+        print(self.recipe)
         recipe = self.recipe
         for phase in self.phases:
 
@@ -144,6 +150,20 @@ class FitPDF():
                     param = getattr(self.recipe, p)
                     recipe.restrain(param, lb=0.1, ub=100, sig=1e-3)
 
+            atoms = self.pg[phase].phase.getScatterers()
+            name = self.pg[phase].name
+            for atom in atoms:
+                _get_name(name, atom.name, "Biso")
+                adp = getattr(recipe, _get_name(name, atom.name, "Biso"))
+                recipe.restrain(adp, lb=0.05, ub=1.5, sig=1e-3)
+
+            for func in self.functions.values():
+                params = func[1][1:]
+                for p in params:
+                    param = getattr(self.recipe, p)
+                    recipe.restrain(param, lb=70, ub=300, sig=1e-3)
+                    param.value = 70
+
     def create_param_order(self):
         nCF = []
         for phase in self.phases:
@@ -152,10 +172,10 @@ class FitPDF():
                     nCF.append(varn)
         nCF = [n for n in nCF if n]
         self.param_order = [
-            ['free', 'lat', 'scale'],
+            ['free', 'lat','scale'], #'scale'
             ['free', *nCF],
             ['free', 'adp', 'delta2'],
-            ['free', 'all']
+            # ['free', 'all'],
         ]
 
     def run_fit(self):

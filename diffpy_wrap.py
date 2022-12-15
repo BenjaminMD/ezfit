@@ -21,11 +21,12 @@ def _create_recipe(
 ) -> FitRecipe:
     fr = FitRecipe()
     fc = FitContribution(fc_name)
+    pgs = {}
     for name, crystal in crystals.items():
         pg = PDFGenerator(name)
         pg.setStructure(crystal, periodic=True)
         pg.parallel(32)
-
+        pgs[name] = pg
         fc.addProfileGenerator(pg)
     if functions:
         for name, (f, argnames) in functions.items():
@@ -33,7 +34,7 @@ def _create_recipe(
     fc.setEquation(equation)
     fc.setProfile(profile, xname="r", yname="G", dyname="dG")
     fr.addContribution(fc)
-    return fr, pg
+    return fr, pgs
 
 
 def _get_tags(phase: str, param: str) -> typing.List[str]:
@@ -195,7 +196,7 @@ def create_recipe_from_files(
     _initialize_recipe(
         recipe, functions, crystals, fc_name=fc_name, meta_data=meta_data
     )
-    return recipe  # , pg
+    return recipe, pg
 
 
 def optimize_params(
