@@ -155,14 +155,14 @@ class FitPDF():
             for atom in atoms:
                 _get_name(name, atom.name, "Biso")
                 adp = getattr(recipe, _get_name(name, atom.name, "Biso"))
-                recipe.restrain(adp, lb=0.05, ub=1.5, sig=1e-3)
+                recipe.restrain(adp, lb=0.05, ub=1, sig=1e-3)
 
             for func in self.functions.values():
                 params = func[1][1:]
                 for p in params:
                     param = getattr(self.recipe, p)
-                    recipe.restrain(param, lb=70, ub=300, sig=1e-3)
-                    param.value = 70
+                    recipe.restrain(param, lb=20, ub=300, sig=1e-3)
+                    param.value = 30
 
     def create_param_order(self):
         nCF = []
@@ -175,7 +175,7 @@ class FitPDF():
             ['free', 'lat','scale'], #'scale'
             ['free', *nCF],
             ['free', 'adp', 'delta2'],
-            # ['free', 'all'],
+            ['free', 'xyz', 'NiAl2O4_Ni1_occ','NiAl2O4_Ni2_occ'],
         ]
 
     def run_fit(self):
