@@ -6,29 +6,17 @@ import os
 import re
 
 
-def get_f1(element: str, xray_energy: float):
-    """
-    args: 
-    element, X-ray energy in keV
-    returns:
-    f1
-    """
+def get_f1(element, keV):
+    print(os.getcwd())
     file_path = glob(f'/home/cipmin/5_Felix/GitHub_EzFit/ezfit/rsc/f1/*{element}*')[0]
     _, element_keV, element_f1 = np.loadtxt(
         file_path, skiprows=1, delimiter=',').T
-    f1 = np.interp([xray_energy],  element_keV, element_f1)[0]
+    f1 = np.interp([keV],  element_keV, element_f1)[0]
     return f1
 
 
 def xray_scat_length(f1):
-    """
-    args: 
-    f1
-    returns:
-    scattering length for element
-    """
-    bi = e**2 / (4 * pi * epsilon_0 * m_e * c**2) * f1
-    return bi
+    return e**2 / (4 * pi * epsilon_0 * m_e * c**2) * f1
 
 
 def get_cell_volume(cif_file):
@@ -46,12 +34,6 @@ def get_cell_volume(cif_file):
 
 
 def get_sym_constraints(cif_file):
-    """
-    args:
-    cif_file
-    returns:
-    symmetrie operations
-    """
     with open(cif_file, 'r') as f:
         lines = f.read().split('\n')
     xyz_index1 = [i for i, l in enumerate(lines) if '_xyz' in l]
@@ -78,12 +60,6 @@ def get_sym_constraints(cif_file):
 
 
 def get_fract_cord(cif_file):
-    """
-    args:
-    cif_file
-    returns:
-    dataframe with fractional coordinates
-    """
     with open(cif_file, 'r') as f:
         lines = f.read().split('\n')
     site_ind = [
@@ -103,18 +79,12 @@ def get_fract_cord(cif_file):
 
 
 def gen_site_pos(df, transforms):
-    """
-    args:
-    df: dataframe with fractional coordinates,
-    transforms: symmetrie operations
-    returns:
-    dictionary with labels as keys and fractional coordinates as values
-    """
     frac_label = {}
     for lab in df.label.unique():  
         row = df.loc[df.label == lab, :]
         x, y, z = [row[xyz].to_numpy()[0]
                    for xyz in ['fract_x', 'fract_y', 'fract_z']]
+
         x, y, z = [float(i.split('(')[0]) for i in [x, y, z]]
         frac = np.unique([t(x, y, z) for t in transforms], axis=0)
         frac = frac % 1
@@ -129,34 +99,15 @@ def gen_site_pos(df, transforms):
 
 
 def count_atom(frac_label, df):
-    """
-    args: 
-    df: dataframe with fractional coordinates,
-    frac_label: dictionary with labels as keys and fractional coordinates as values
-    returns:
-    dictionary with labels as keys and number of atoms as values
-    """
     atom_multiplicity = {}
     for label, pos in frac_label.items():
         atom_multiplicity[label] = np.array(pos).shape[0]
     for label, occ in zip(df.label, df.occupancy):
         atom_multiplicity[label] *= float(occ)
     return atom_multiplicity
-    
-
-def get_avg_sctr_len(bi, atom_multiplicity):
-    """
-    """
-    avg_sctr_len = 0
-    for label, mult in atom_multiplicity.items():
-        avg_sctr_len += mult * bi[label]
-    avg_sctr_len /= sum(atom_multiplicity.values())
-    return avg_sctr_len
 
 
 def get_scale(phases, atom_multiplicity, cell_volume, f1):
-    """
-    """
     phase_molar_contrib = {}
     for phase, scale in phases.keys():
         molar_contrib = 0
@@ -169,8 +120,6 @@ def get_scale(phases, atom_multiplicity, cell_volume, f1):
 
 
 def get_atomic_scales(cif_file, phases, keV, element):
-    """
-    """
     cell_volume = float(get_cell_volume(cif_file))
     transforms = get_sym_constraints(cif_file)
     df = get_fract_cord(cif_file)
@@ -180,9 +129,8 @@ def get_atomic_scales(cif_file, phases, keV, element):
     atom = [re.sub(r'\d+', '', i) for i in df.label.unique()]
     print(atom)
     f1 = get_f1(element, keV)
-    # f1 = {label: get_f1(at, keV) for at, label in zip(atom, df.label.unique())}
+    #f1 = {label: get_f1(at, keV) for at, label in zip(atom, df.label.unique())}
     get_scale(phases, atom_multiplicity, cell_volume, f1)
-
 
 def main():
     cif_file = '/home/cipmin/5_Felix/GitHub_EzFit/cifs/NiO.cif'
