@@ -109,7 +109,7 @@ class FitPDF():
         self.functions = create_functions(self.phases, nanoparticle_shapes)
 
     def update_recipe(self):
-        self.recipe = dw.create_recipe_from_files(
+        self.recipe, self.pg = dw.create_recipe_from_files(
              data_file=self.file,
              meta_data=self.config['PDF'],
              equation=self.equation,
@@ -123,7 +123,7 @@ class FitPDF():
 
             delta2 = getattr(self.recipe, f'{phase}_delta2')
             recipe.restrain(delta2, lb=1, ub=5, sig=1e-3)
-            delta2.value = 3.0
+            delta2.value = 1
 
             scale = getattr(self.recipe, f'{phase}_scale')
             recipe.restrain(scale, lb=0.1, ub=2, sig=1e-3)
@@ -158,7 +158,7 @@ class FitPDF():
         ]
 
     def run_fit(self):
-        self.update_recipe()
+        #self.update_recipe()
         self.apply_restraints()
         self.create_param_order()
         dw.optimize_params_manually(

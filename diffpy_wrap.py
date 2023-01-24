@@ -168,7 +168,7 @@ def _initialize_recipe(
         pg: PDFGenerator = getattr(fc, name)
         _add_params_in_pg(recipe, pg, meta_data)
     recipe.clearFitHooks()
-    return
+    return pg
 
 
 def create_recipe_from_files(
@@ -192,10 +192,10 @@ def create_recipe_from_files(
     recipe, pg = _create_recipe(
         equation, crystals, functions, profile, fc_name=fc_name
     )
-    _initialize_recipe(
+    pg = _initialize_recipe(
         recipe, functions, crystals, fc_name=fc_name, meta_data=meta_data
     )
-    return recipe  # , pg
+    return recipe  , pg
 
 
 def optimize_params(
