@@ -3,8 +3,11 @@ from diffpy.srfit.fitbase import FitResults
 from itertools import count
 from pathlib import Path
 from typing import List
+import numpy as np
 from . import diffpy_wrap as dw
 import toml
+from ezfit.get_scales import GetScales
+
 
 
 def _read_config(config_location: str = None):
@@ -64,7 +67,7 @@ def _fetch_function(phase, function):
     return func_param[function]
 
 
-def create_cif_files(phases, config):
+def create_cif_files_string(phases, config):
     cif_files = {}
     for phase in list(phases):
         cif_files[f'{phase}'] = f'{config["files"]["cifs"]}{phase.split("Γ")[0]}.cif'
@@ -72,7 +75,7 @@ def create_cif_files(phases, config):
     return cif_files
 
 
-def create_equation(phases, nanoparticle_shapes):
+def create_equation_string(phases, nanoparticle_shapes):
     equation_list = []
     for phase, function in zip(phases, nanoparticle_shapes):
         equation_list.append(f'{phase} * {phase}{function}')
@@ -90,23 +93,25 @@ def create_functions(phases, nanoparticle_shapes):
     return functions
 
 
-class FitPDF():
+class FitPDF(GetScales):
     def __init__(
             self,
             file: str,
-            phases: List[str],
-            nanoparticle_shapes: List[str],
+            phasesetup: dict,
             config_location: str = None,
     ):
+        self.phases = list(phasesetup.keys())
+        self.nanoparticle_shapes = np.array(list(phasesetup.values())).T[0]
+        self.formulas = dict(zip(self.phases, np.array(list(phasesetup.values())).T[1]))
         self.file = file
-        self.phases = _parse_phases(self, phases)
+        self.phases = _parse_phases(self, self.phases)
 
         self.config = _read_config(config_location)
         validate_file_locations(self.config)
 
-        self.cif_files = create_cif_files(self.phases, self.config)
-        self.equation = create_equation(self.phases, nanoparticle_shapes)
-        self.functions = create_functions(self.phases, nanoparticle_shapes)
+        self.cif_files = create_cif_files_string(self.phases, self.config)
+        self.equation = create_equation_string(self.phases, self.nanoparticle_shapes)
+        self.functions = create_functions(self.phases, self.nanoparticle_shapes)
 
     def update_recipe(self):
         self.recipe, self.pg = dw.create_recipe_from_files(
@@ -123,17 +128,17 @@ class FitPDF():
 
             delta2 = getattr(self.recipe, f'{phase}_delta2')
             recipe.restrain(delta2, lb=1, ub=5, sig=1e-3)
-            delta2.value = 1
+            delta2.value = 3
 
             scale = getattr(self.recipe, f'{phase}_scale')
-            recipe.restrain(scale, lb=0.1, ub=2, sig=1e-3)
+            recipe.restrain(scale, lb=0.01, ub=2, sig=1e-3)
             scale.value = 1
 
             for abc in ['a', 'b', 'c']:
                 try:
                     lat = getattr(self.recipe, f'{phase}_{abc}')
-                    lb_lat = lat.value - 0.2
-                    ub_lat = lat.value + 0.2
+                    lb_lat = lat.value - 0.5
+                    ub_lat = lat.value + 0.5
                     recipe.restrain(lat, lb=lb_lat, ub=ub_lat, sig=1e-3)
                 except AttributeError:
                     pass
@@ -143,6 +148,7 @@ class FitPDF():
                 for p in params:
                     param = getattr(self.recipe, p)
                     recipe.restrain(param, lb=10, ub=100, sig=1e-3)
+                    param.value = 50
 
     def create_param_order(self):
         nCF = []
@@ -154,7 +160,7 @@ class FitPDF():
         self.param_order = [
             ['free', 'lat', 'scale'],
             ['free', *nCF],
-            ['free', 'adp', 'delta2'],
+            ['free', 'delta2', 'adp'],
         ]
 
     def run_fit(self):
@@ -173,3 +179,7 @@ class FitPDF():
         res = FitResults(self.recipe)
         if self.config['Verbose']['results']:
             res.printResults()
+        molscale, weighscale = self.calc_scale()
+        print('Mol Scales:\n', [f'{k} = {v:1.3}' for k, v in molscale.items()])
+        print('Weight Scales:\n', [f'{k} = {v:1.3}' for k, v in weighscale.items()])
+        

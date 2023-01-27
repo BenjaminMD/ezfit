@@ -2,17 +2,26 @@ import pandas as pd
 import numpy as np
 from scipy.constants import c, e, m_e, epsilon_0, pi
 from glob import glob
+from molmass import Formula
 
 class GetScales():
     '''
     Class
 
     '''
-    def __init__(self, fit_pdf, xray_energy):
-        self.xray_energy = xray_energy
-        self.fit_pdf = fit_pdf
-        self.phases = self.fit_pdf.phases
-        self.cifs = self.fit_pdf.cif_files
+
+    def calc_scale(self):
+        self.get_cifs()
+        self.get_scales()
+        self.get_cell_volume()
+        self.get_sym_constraints()
+        self.get_fract_cord()
+        self.gen_site_pos()
+        self.count_atom()
+        self.get_number_density()
+        self.get_xray_scat_len()
+        self.get_avg_scat_len()
+        return self.get_real_scales(), self.get_weight_percent()
 
     def get_scales(self):
         '''
@@ -20,20 +29,18 @@ class GetScales():
         '''
         self.scales = {}
         for phase in self.phases:
-            cif = self.cifs[phase]
-            scale = getattr(fit_pdf.recipe, phase + '_scale').value
+            scale = getattr(self.recipe, phase + '_scale').value
             self.scales[phase] = scale
         return self.scales
 
     def get_cifs(self):
         self.cif_contents = {}
         for phase in self.phases:
-            with open(self.cifs[phase], 'r') as f:
+            with open(self.cif_files[phase], 'r') as f:
                 lines = f.readlines()
             lines = [line.strip() for line in lines]
             self.cif_contents[phase] = lines
         return self.cif_contents
-
 
     def get_cell_volume(self):
         """
@@ -49,7 +56,6 @@ class GetScales():
             self.cell_volume[phase] = float(cell_line[0].split()[-1].split('(')[0])
             self.cell_volume[phase] = self.cell_volume[phase] * 10**-30
         return self.cell_volume
-
 
     def get_sym_constraints(self):
         """
@@ -70,7 +76,6 @@ class GetScales():
                 xyz_lines = [line.replace(ch, '') for line in xyz_lines] 
             self.transforms[phase] = [lambda x, y, z, coef=i: eval(f'[{coef}]') for i in xyz_lines] 
         return self.transforms
-
 
     def get_fract_cord(self):
         """
@@ -96,7 +101,6 @@ class GetScales():
                 data = [line.split() for line in lines[site_ind[-1]+1:] if line != '']
             self.fract_cord[phase] = pd.DataFrame(data, columns=col_names)
         return self.fract_cord
-
 
     def gen_site_pos(self):
         """
@@ -125,7 +129,6 @@ class GetScales():
                 self.site_pos[phase][lab] = frac
         return self.site_pos
 
-
     def count_atom(self):
         """
         args: 
@@ -143,7 +146,6 @@ class GetScales():
                 self.atom_mult[phase][label] *= float(occ)
         return self.atom_mult
 
-
     def get_number_density(self):
         """
         args:
@@ -154,12 +156,11 @@ class GetScales():
         """
         self.number_dens = {}
         for phase in self.phases:
-            n = 0 #n = total amount of atoms
-            n_x = list(self.atom_mult[phase].values()) #number of element x in unit cell
+            n = 0  #n = total amount of atoms
+            n_x = list(self.atom_mult[phase].values())  #number of element x in unit cell
             dens = sum(n_x) / self.cell_volume[phase]
             self.number_dens[phase] = dens
         return self.number_dens
-
 
     def get_xray_scat_len(self):
         """
@@ -187,13 +188,11 @@ class GetScales():
                 file_path = glob(f'/home/cipmin/5_Felix/GitHub_EzFit/ezfit/rsc/f1/*{element}*')[0]
                 _, element_keV, element_f1 = np.loadtxt(
                     file_path, skiprows=1, delimiter=',').T
-                f = np.interp([self.xray_energy],  element_keV, element_f1)[0]
+                f = np.interp([self.config['Measurement']['keV']],  element_keV, element_f1)[0]
                 bi = e**2 / (4 * pi * epsilon_0 * m_e * c**2) * f
-                #print('f', f, 'bi', bi)
                 f1[phase].append(f)
                 self.b1[phase].append(bi)
         return self.b1
-
 
     def get_avg_scat_len(self):
         """
@@ -204,7 +203,7 @@ class GetScales():
         avg_scat_len: dictionary with phase as keys and average scatter length of unit cell as values
         """
         self.avg_scat_len = {}
-        n = {} #n = total amount of atoms
+        n = {}  #n = total amount of atoms
         f_sum = {}  #sum of scattering length
         for phase in self.phases:
             self.avg_scat_len[phase] = 0
@@ -236,17 +235,15 @@ class GetScales():
             self.real_scales[phase] = s[phase] / sum_scales
         return self.real_scales
 
+    def get_weight_percent(self):
+        self.weight_percent = {}
+        total = 0
+        for phase in self.phases:
+            formula = self.formulas[phase]
+            total += Formula(formula).isotope.mass * self.real_scales[phase]
+        for phase in self.phases:
+            formula = self.formulas[phase]
+            self.weight_percent[phase] = Formula(formula).isotope.mass * self.real_scales[phase] / total
+        return self.weight_percent
 
-def calc_scale(fit_pdf, keV):
-    get_scale = GetScales(fit_pdf, keV)
-    get_scale.get_cifs()
-    get_scale.get_scales()
-    get_scale.get_cell_volume()
-    get_scale.get_sym_constraints()
-    get_scale.get_fract_cord()
-    get_scale.gen_site_pos()
-    get_scale.count_atom()
-    get_scale.get_number_density()
-    get_scale.get_xray_scat_len()
-    get_scale.get_avg_scat_len()
-    return get_scale.get_real_scales()
+
