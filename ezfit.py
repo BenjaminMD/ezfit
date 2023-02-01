@@ -64,7 +64,7 @@ def _fetch_function(phase, function):
         'shellCF2':
         (CF.shellCF, ['r', f'{phase}_a', f'{phase}_delta']),
         'bulkCF':
-        (lambda r: r * 1, ['r']),
+        (lambda r: 1, ['r']),
         }
     return func_param[function]
 
@@ -175,11 +175,11 @@ class FitPDF():
             ['free', 'lat','scale'], #'scale'
             ['free', *nCF],
             ['free', 'adp', 'delta2'],
-            ['free', 'xyz', 'NiAl2O4_Ni1_occ','NiAl2O4_Ni2_occ'],
+            ['free', 'xyz'],
         ]
 
     def run_fit(self):
-        self.update_recipe()
+        #self.update_recipe() # do not touch 
         self.apply_restraints()
         self.create_param_order()
         dw.optimize_params_manually(
