@@ -20,12 +20,6 @@ def _read_config(config_location: str = None):
     return config
 
 
-def validate_file_locations(config: dict):
-    for key, val in config['files'].items():
-        if not Path(val).exists():
-            raise FileNotFoundError(f"File {val} does not exist.")
-
-
 def _phase_counter(self, phase):
     if not hasattr(self, f'{phase}_count'):
         setattr(self, f'{phase}_count', count(1))
@@ -107,7 +101,6 @@ class FitPDF(GetScales):
         self.phases = _parse_phases(self, self.phases)
 
         self.config = _read_config(config_location)
-        validate_file_locations(self.config)
 
         self.cif_files = create_cif_files_string(self.phases, self.config)
         self.equation = create_equation_string(self.phases, self.nanoparticle_shapes)
@@ -127,8 +120,8 @@ class FitPDF(GetScales):
         for phase in self.phases:
 
             delta2 = getattr(self.recipe, f'{phase}_delta2')
-            recipe.restrain(delta2, lb=1, ub=5, sig=1e-3)
-            delta2.value = 3
+            recipe.restrain(delta2, lb=0, ub=5, sig=1e-3)
+            delta2.value = 2
 
             scale = getattr(self.recipe, f'{phase}_scale')
             recipe.restrain(scale, lb=0.01, ub=2, sig=1e-3)
@@ -179,7 +172,8 @@ class FitPDF(GetScales):
         res = FitResults(self.recipe)
         if self.config['Verbose']['results']:
             res.printResults()
-        molscale, weighscale = self.calc_scale()
+        molscale, weighscale, org_weight = self.calc_scale()
         print('Mol Scales:\n', [f'{k} = {v:1.3}' for k, v in molscale.items()])
         print('Weight Scales:\n', [f'{k} = {v:1.3}' for k, v in weighscale.items()])
-        
+        print('Org Weight Scales:\n', [f'{k} = {v:1.3}' for k, v in org_weight.items()])
+        return res

@@ -21,7 +21,7 @@ class GetScales():
         self.get_number_density()
         self.get_xray_scat_len()
         self.get_avg_scat_len()
-        return self.get_real_scales(), self.get_weight_percent()
+        return self.get_real_scales(), self.get_weight_percent(), self.get_original_weight_percent()
 
     def get_scales(self):
         '''
@@ -244,6 +244,17 @@ class GetScales():
         for phase in self.phases:
             formula = self.formulas[phase]
             self.weight_percent[phase] = Formula(formula).isotope.mass * self.real_scales[phase] / total
+        return self.weight_percent
+
+    def get_original_weight_percent(self):
+        self.weight_percent = {}
+        total = 0
+        for phase in self.phases:
+            formula = self.formulas[phase]
+            total += Formula(formula).isotope.mass * self.scales[phase]
+        for phase in self.phases:
+            formula = self.formulas[phase]
+            self.weight_percent[phase] = Formula(formula).isotope.mass * self.scales[phase] / total
         return self.weight_percent
 
 
