@@ -185,7 +185,7 @@ class GetScales():
                         element += symbol
                 elements[phase].append(element)
             for element in elements[phase]:
-                file_path = glob(f'/home/cipmin/5_Felix/GitHub_EzFit/ezfit/rsc/f1/*{element}*')[0]
+                file_path = glob(f'./ezfit/rsc/f1/*{element}*')[0]
                 _, element_keV, element_f1 = np.loadtxt(
                     file_path, skiprows=1, delimiter=',').T
                 f = np.interp([self.config['Measurement']['keV']],  element_keV, element_f1)[0]
