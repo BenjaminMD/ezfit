@@ -179,8 +179,7 @@ class FitPDF(GetScales):
         res = FitResults(self.recipe)
         if self.config['Verbose']['results']:
             res.printResults()
-        self.molscale, self.weighscale = self.calc_scale()
-        self.all_scales = {'mol_scale': self.molscale, 'wt_scale': self.weighscale}
+        molscale, weighscale = self.calc_scale()
         print('Mol Scales:\n', [f'{k} = {v:1.3}' for k, v in molscale.items()])
         print('Weight Scales:\n', [f'{k} = {v:1.3}' for k, v in weighscale.items()])
-        return res
+        

@@ -195,7 +195,7 @@ def create_recipe_from_files(
     pg = _initialize_recipe(
         recipe, functions, crystals, fc_name=fc_name, meta_data=meta_data
     )
-    return recipe  , pg
+    return recipe, pg
 
 
 def optimize_params(
@@ -219,7 +219,7 @@ def optimize_params(
         recipe.free(*step)
         if print_step:
             print(
-                "Step {} / {}: refine {}".format(
+                "Step {} / {}: manzonied {}".format(
                     i + 1, n, ", ".join(recipe.getNames())
                 ),
                 end="\r"
@@ -255,11 +255,13 @@ def optimize_params_manually(
         eval(f'recipe.{step[0]}(*{step[1:]})')
         if print_step:
             print(
-                "Step {} / {}: refine {}".format(
+                "Step {} / {}: minzonied {}".format(
                     i + 1, n, ", ".join(recipe.getNames())
                 ),
                 end="\r"
             )
+        if step[0] == 'fix':
+            continue
         least_squares(
             recipe.residual,
             recipe.getValues(),
@@ -271,6 +273,7 @@ def optimize_params_manually(
 
 def save_results(
         recipe: FitRecipe,
+        footer: str,
         directory: str,
         file_stem: str,
         pg_names: typing.List[str] = None,
@@ -298,7 +301,7 @@ def save_results(
     d_path.mkdir(parents=True, exist_ok=True)
     f_path = d_path.joinpath(file_stem)
     fr = FitResults(recipe)
-    fr.saveResults(str(f_path.with_suffix(".res")))
+    fr.saveResults(str(f_path.with_suffix(".res")), footer=f'{footer}')
     fc: FitContribution = getattr(recipe, fc_name)
     profile: Profile = fc.profile
     profile.savetxt(str(f_path.with_suffix(".fgr")))
