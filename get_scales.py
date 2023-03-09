@@ -21,8 +21,8 @@ class GetScales():
         self.get_number_density()
         self.get_xray_scat_len()
         self.get_avg_scat_len()
-        return self.get_real_scales(), self.get_weight_percent(), self.get_original_weight_percent()
-
+        return self.get_real_scales(), self.get_weight_percent()
+#, self.get_original_weight_percent()
     def get_scales(self):
         '''
         Function
