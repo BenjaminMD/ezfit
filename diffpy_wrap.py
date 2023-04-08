@@ -222,49 +222,11 @@ def optimize_params(
         recipe.free(*step)
         if print_step:
             print(
-                "Step {} / {}: manzonied {}".format(
+                "Step {} / {}: params {}".format(
                     i + 1, n, ", ".join(recipe.getNames())
                 ),
                 end="\r"
             )
-        least_squares(
-            recipe.residual,
-            recipe.getValues(),
-            bounds=recipe.getBounds2(),
-            **kwargs
-        )
-    return
-
-
-def optimize_params_manually(
-    recipe: FitRecipe,
-    steps: typing.List[typing.List[str]],
-    rmin: float = None,
-    rmax: float = None,
-    rstep: float = None,
-    print_step: bool = True,
-    fc_name: str = "PDF",
-    **kwargs
-) -> None:
-
-    from warnings import warn
-    warn("Felix Fabio? Do we really need the functionality to fix a step during the fit or do we just want to free one by one", DeprecationWarning)
-    n = len(steps)
-    fc: FitContribution = getattr(recipe, fc_name)
-    p: Profile = fc.profile
-    p.setCalculationRange(xmin=rmin, xmax=rmax, dx=rstep)
-
-    for i, step in enumerate(steps):
-        eval(f'recipe.{step[0]}(*{step[1:]})')
-        if print_step:
-            print(
-                "Step {} / {}: minzonied {}".format(
-                    i + 1, n, ", ".join(recipe.getNames())
-                ),
-                end="\r"
-            )
-        if step[0] == 'fix':
-            continue
         least_squares(
             recipe.residual,
             recipe.getValues(),

@@ -5,12 +5,12 @@ from pathlib import Path
 from typing import List
 import numpy as np
 from . import diffpy_wrap as dw
+from .contribution import Contribution
 import toml
-from ezfit.get_scales import GetScales
 
 
 
-def _read_config(config_location: str = None):
+def load_toml_config(config_location: str = None):
     if config_location is None:
         cwd = Path().resolve()
         config_path = list(Path(cwd).glob('*.toml'))[0]
@@ -87,20 +87,23 @@ def create_functions(phases, nanoparticle_shapes):
     return functions
 
 
-class FitPDF(GetScales):
+class FitPDF():
     def __init__(
             self,
             file: str,
-            phasesetup: dict,
+            contributions: List[Contribution],
             config_location: str = None,
     ):
-        self.phases = list(phasesetup.keys())
-        self.nanoparticle_shapes = np.array(list(phasesetup.values())).T[0]
-        self.formulas = dict(zip(self.phases, np.array(list(phasesetup.values())).T[1]))
+        
+        self.phases = [contribution.cif_name for contribution in contributions]
+        self.nanoparticle_shapes = [contribution.cf_name for contribution in contributions]
+        self.formulas = {contribution.cif_name: contribution.formula for contribution in contributions}
+        
+        
         self.file = file
         self.phases = _parse_phases(self, self.phases)
 
-        self.config = _read_config(config_location)
+        self.config = load_toml_config(config_location)
 
         self.cif_files = create_cif_files_string(self.phases, self.config)
         self.equation = create_equation_string(self.phases, self.nanoparticle_shapes)
@@ -163,6 +166,7 @@ class FitPDF(GetScales):
                 for varn in func[1][1:]:
                     nCF.append(varn)
         nCF = [n for n in nCF if n]
+        
         self.param_order = [
             ['free', 'lat', 'scale'],
             ['free', *nCF],
@@ -170,10 +174,9 @@ class FitPDF(GetScales):
         ]
 
     def run_fit(self):
-        #self.update_recipe()
         self.apply_restraints()
         self.create_param_order()
-        dw.optimize_params_manually(
+        dw.optimize_params(
             self.recipe,
             self.param_order,
             rmin=self.config['R_val']['rmin'],
@@ -185,8 +188,4 @@ class FitPDF(GetScales):
         res = FitResults(self.recipe)
         if self.config['Verbose']['results']:
             res.printResults()
-        self.molscale, self.weighscale = self.calc_scale()
-        self.all_scales = {'mol_scale': self.molscale, 'wt_scale': self.weighscale}
-        print('Mol Scales:\n', [f'{k} = {v:1.3}' for k, v in self.molscale.items()])
-        print('Weight Scales:\n', [f'{k} = {v:1.3}' for k, v in self.weighscale.items()])
         return res

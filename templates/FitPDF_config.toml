@@ -8,7 +8,7 @@ rmin = 1.2
 rmax = 30
 rstep = 0.01
 [files]
-cifs = './cifs/'
+cifs = '../CIFS/'
 out = './results/'
 [Verbose]
 step = false
