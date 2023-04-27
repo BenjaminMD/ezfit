@@ -62,22 +62,6 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
     name: str = pg.name
     if not meta_data:
         print('No meta data found for {}'.format(name))
-        # recipe.addVar(
-        #     pg.qdamp,
-        #     name='qdamp',
-        #     value=0.,
-        #     fixed=False,
-        #     tags='qdamp'
-        # ).boundRange(0.)
-
-        # recipe.addVar(
-        #     pg.qbroad,
-        #     name='qbroad',
-        #     value=0.,
-        #     fixed=False,
-        #     tags='qbroad'
-        #     ).boundRange(0.)
-        
 
     recipe.addVar(
         pg.scale,

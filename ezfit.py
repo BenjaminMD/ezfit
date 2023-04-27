@@ -10,14 +10,7 @@ import toml
 
 
 
-def load_toml_config(config_location: str = None):
-    if config_location is None:
-        cwd = Path().resolve()
-        config_path = list(Path(cwd).glob('*.toml'))[0]
-    else:
-        config_path = Path(config_location).expanduser().resolve()
-    config: dict = toml.load(config_path)
-    return config
+
 
 
 def _phase_counter(self, phase):
@@ -103,11 +96,21 @@ class FitPDF():
         self.file = file
         self.phases = _parse_phases(self, self.phases)
 
-        self.config = load_toml_config(config_location)
+        self.config = self.load_toml_config(config_location)
 
         self.cif_files = create_cif_files_string(self.phases, self.config)
         self.equation = create_equation_string(self.phases, self.nanoparticle_shapes)
         self.functions = create_functions(self.phases, self.nanoparticle_shapes)
+
+    def load_toml_config(self, config_location: str = None):
+        if config_location is None:
+            cwd = Path().resolve()
+            config_path = list(Path(cwd).glob('*.toml'))[0]
+        else:
+            config_path = Path(config_location).expanduser().resolve()
+        config: dict = toml.load(config_path)
+        return config
+
 
     def update_recipe(self):
 
@@ -168,7 +171,16 @@ class FitPDF():
             scale = getattr(self.recipe, f'{phase}_scale')
             recipe.restrain(scale, lb=0.01, ub=2, sig=1e-3)
             scale.value = 1
+            
+            
+            recipe.fix('all')
+            recipe.free('occ')
 
+            for occ_name in recipe.getNames():
+                occ = getattr(recipe, occ_name)
+                recipe.restrain(occ, lb=0.0, ub=1, sig=1e-3)
+            recipe.fix('all')
+            
             for abc in ['a', 'b', 'c']:
                 try:
                     lat = getattr(self.recipe, f'{phase}_{abc}')
