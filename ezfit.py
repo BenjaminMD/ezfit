@@ -55,8 +55,8 @@ def _fetch_function(phase, function):
         (CF.shellCF, ['r', f'{phase}_radius', f'{phase}_thickness']),
         'shellCF2':
         (CF.shellCF, ['r', f'{phase}_a', f'{phase}_delta']),
-        'bulfkCF':
-        (lambda r: r * 1, ['r']),
+        'bulkCF':
+        (lambda r: 1, ['r']),
         }
     return func_param[function]
 
@@ -110,13 +110,39 @@ class FitPDF():
         self.functions = create_functions(self.phases, self.nanoparticle_shapes)
 
     def update_recipe(self):
-        self.recipe, self.pg = dw.create_recipe_from_files(
+
+        self.recipe, self.pgs = dw.create_recipe_from_files(
              data_file=self.file,
              meta_data=self.config['PDF'],
              equation=self.equation,
              cif_files=self.cif_files,
              functions=self.functions
         )
+        if not self.config['PDF']:
+            self.add_instr_params()
+
+    def add_instr_params(self) -> None:
+        print('attempting to fit instrumental parameters')
+        if len(self.pgs) != 1:
+            raise ValueError('determining instrument param only one pg allowed')
+        pg = list(self.pgs.values())[0]
+        self.recipe.addVar(
+                pg.qdamp,
+                name='qdamp',
+                value=0.1,
+                fixed=True,
+                tags='qdamp'
+            ).boundRange(0.)
+
+        self.recipe.addVar(
+            pg.qbroad,
+            name='qbroad',
+            value=0.1,
+            fixed=True,
+            tags='qbroad'
+            ).boundRange(0.)
+    
+        self.config['param_order'][-1]['free'].extend(['qdamp', 'qbroad'])
 
     def apply_restraints(self):
         recipe = self.recipe
@@ -161,24 +187,24 @@ class FitPDF():
 
     def create_param_order(self):
         nCF = []
-        for phase in self.phases:
-            for func in self.functions.values():
-                for varn in func[1][1:]:
-                    nCF.append(varn)
+        for func in self.functions.values():
+            for varn in func[1][1:]:
+                nCF.append(varn)
         nCF = [n for n in nCF if n]
-        
-        self.param_order = [
-            ['free', 'lat', 'scale'],
-            ['free', *nCF],
-            ['free', 'delta2', 'adp'],
-        ]
+
+        for order in self.config['param_order']:
+            if "cfs" in order["free"]:
+                id = order["free"].index("cfs")
+                order["free"].pop(id)
+                order["free"].extend(nCF)
+
 
     def run_fit(self):
         self.apply_restraints()
         self.create_param_order()
         dw.optimize_params(
             self.recipe,
-            self.param_order,
+            self.config['param_order'],
             rmin=self.config['R_val']['rmin'],
             rmax=self.config['R_val']['rmax'],
             rstep=self.config['R_val']['rstep'],

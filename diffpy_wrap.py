@@ -19,6 +19,7 @@ def _create_recipe(
         profile: Profile,
         fc_name: str = "PDF"
 ) -> FitRecipe:
+    pgs = {}
     fr = FitRecipe()
     fc = FitContribution(fc_name)
     for name, crystal in crystals.items():
@@ -27,13 +28,16 @@ def _create_recipe(
         pg.parallel(32)
 
         fc.addProfileGenerator(pg)
+        
+        pgs[name] = pg
+        
     if functions:
         for name, (f, argnames) in functions.items():
             fc.registerFunction(f, name=name, argnames=argnames)
     fc.setEquation(equation)
     fc.setProfile(profile, xname="r", yname="G", dyname="dG")
     fr.addContribution(fc)
-    return fr, pg
+    return fr, pgs
 
 
 def _get_tags(phase: str, param: str) -> typing.List[str]:
@@ -58,21 +62,22 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
     name: str = pg.name
     if not meta_data:
         print('No meta data found for {}'.format(name))
-        recipe.addVar(
-            pg.qdamp,
-            name='qdamp',
-            value=0.,
-            fixed=True,
-            tags='qdamp'
-        ).boundRange(0.)
+        # recipe.addVar(
+        #     pg.qdamp,
+        #     name='qdamp',
+        #     value=0.,
+        #     fixed=False,
+        #     tags='qdamp'
+        # ).boundRange(0.)
 
-        recipe.addVar(
-            pg.qbroad,
-            name='qbroad',
-            value=0.,
-            fixed=True,
-            tags='qbroad'
-            ).boundRange(0.)
+        # recipe.addVar(
+        #     pg.qbroad,
+        #     name='qbroad',
+        #     value=0.,
+        #     fixed=False,
+        #     tags='qbroad'
+        #     ).boundRange(0.)
+        
 
     recipe.addVar(
         pg.scale,
@@ -171,7 +176,7 @@ def _initialize_recipe(
         pg: PDFGenerator = getattr(fc, name)
         _add_params_in_pg(recipe, pg, meta_data)
     recipe.clearFitHooks()
-    return pg
+    return
 
 
 def create_recipe_from_files(
@@ -192,13 +197,13 @@ def create_recipe_from_files(
     profile = Profile()
     profile.loadParsedData(pp)
     profile.meta.update(meta_data)
-    recipe, pg = _create_recipe(
+    recipe, pgs = _create_recipe(
         equation, crystals, functions, profile, fc_name=fc_name
     )
-    pg = _initialize_recipe(
+    _initialize_recipe(
         recipe, functions, crystals, fc_name=fc_name, meta_data=meta_data
     )
-    return recipe, pg
+    return recipe, pgs
 
 
 def optimize_params(
@@ -213,13 +218,19 @@ def optimize_params(
 ) -> None:
 
     n = len(steps)
+    free_steps = [order["free"] for order in steps]
+    fix_steps = [order["fix"] for order in steps]
+
     fc: FitContribution = getattr(recipe, fc_name)
     p: Profile = fc.profile
     p.setCalculationRange(xmin=rmin, xmax=rmax, dx=rstep)
-    for step in steps:
+    for step in free_steps:
         recipe.fix(*step)
-    for i, step in enumerate(steps):
-        recipe.free(*step)
+    for i, (free_step, fix_step) in enumerate(zip(free_steps, fix_steps)):
+        if fix_step:
+            recipe.fix(*fix_step)
+        if free_step:
+            recipe.free(*free_step)
         if print_step:
             print(
                 "Step {} / {}: params {}".format(
