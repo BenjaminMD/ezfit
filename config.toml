@@ -15,12 +15,11 @@ step = true
 results = true
 
 
-# define order of fit below
-[[param_order]] # step 1 
+[[param_order]]
 free = ["lat", "scale"]
 fix = []
 
-[[param_order]] # step 2 ...
+[[param_order]]
 free = ["cfs", "occ"] 
 fix = []
 
