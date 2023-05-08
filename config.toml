@@ -1,0 +1,29 @@
+[PDF]
+#qbroad = 9.44564318e-03
+#qdamp =  2.21325581e-02
+[Measurement]
+keV = 59.798
+[R_val]
+rmin = 1.2
+rmax = 200
+rstep = 0.01
+[files]
+cifs = '../../CIFS/'
+out = './results/'
+[Verbose]
+step = true
+results = true
+
+
+# define order of fit below
+[[param_order]] # step 1 
+free = ["lat", "scale"]
+fix = []
+
+[[param_order]] # step 2 ...
+free = ["cfs", "occ"] 
+fix = []
+
+[[param_order]]
+free = ["delta2", "adp"]
+fix = []
