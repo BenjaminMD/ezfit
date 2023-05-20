@@ -101,6 +101,7 @@ class FitPDF():
         self.cif_files = create_cif_files_string(self.phases, self.config)
         self.equation = create_equation_string(self.phases, self.nanoparticle_shapes)
         self.functions = create_functions(self.phases, self.nanoparticle_shapes)
+        self.dw = dw
 
     def load_toml_config(self, config_location: str = None):
         if config_location is None:
