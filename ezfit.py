@@ -223,7 +223,7 @@ class FitPDF():
             ftol=1e-5,
             print_step=self.config['Verbose']['step'],
         )
-        res = FitResults(self.recipe)
+        self.res = FitResults(self.recipe)
         if self.config['Verbose']['results']:
-            res.printResults()
-        return res
+            self.res.printResults()
+        return self.res
