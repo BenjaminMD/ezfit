@@ -2,7 +2,7 @@
 qbroad = 0.011
 qdamp =  0.01
 [Measurement]
-keV = 22.16
+keV = 59.79489
 [R_val]
 rmin = 1.2
 rmax = 30

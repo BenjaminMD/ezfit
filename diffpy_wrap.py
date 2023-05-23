@@ -110,6 +110,7 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
 
     for par in xyzpars:
         par_name = _rename_par(par.name, atoms)
+        #if par_name.startswith('Si'):
         try:
             recipe.addVar(
                 par,
@@ -119,6 +120,8 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
             )
         except ValueError:
             print(name, par_name, 'already constrained')
+        else:
+            pass
     for atom in atoms:
         atom_type = filter(lambda x: x.isalpha(), atom.name)
         atom_type = ''.join(atom_type)
@@ -258,7 +261,7 @@ def optimize_params_manually(
         eval(f'recipe.{step[0]}(*{step[1:]})')
         if print_step:
             print(
-                "Step {} / {}: minzonied {}".format(
+                "Step {} / {}: processing {}".format(
                     i + 1, n, ", ".join(recipe.getNames())
                 ),
                 end="\r"
