@@ -25,12 +25,12 @@ def _create_recipe(
     for name, crystal in crystals.items():
         pg = PDFGenerator(name)
         pg.setStructure(crystal, periodic=True)
-        #pg.parallel(32)
+        # pg.parallel(32)
         pg._calc.evaluatortype = 'OPTIMIZED'
         fc.addProfileGenerator(pg)
-        
+
         pgs[name] = pg
-        
+
     if functions:
         for name, (f, argnames) in functions.items():
             fc.registerFunction(f, name=name, argnames=argnames)
@@ -275,48 +275,4 @@ def save_results(
             ).with_suffix(".cif")
             with cif_path.open("w") as f:
                 stru.CIFOutput(f)
-    return
-
-
-def visualize_fits(
-            ax,
-            recipe: FitRecipe,
-            xlim: typing.Tuple = None,
-            fc_name: str = "PDF"
-        ) -> None:
-    """Visualize the fits in the FitRecipe object.
-
-    Parameters
-    ----------
-    recipe :
-        The FitRecipe object.
-    xlim :
-        The boundary of the x to show in the plot.
-    fc_name :
-        The name of the FitContribution in the FitRecipe. Default "PDF".
-
-    Returns
-    -------
-    None.
-    """
-    # get data
-    fc = getattr(recipe, fc_name)
-    r = fc.profile.x
-    g = fc.profile.y
-    gcalc = fc.profile.ycalc
-    if xlim is not None:
-        sel = np.logical_and(r >= xlim[0], r <= xlim[1])
-        r = r[sel]
-        g = g[sel]
-        gcalc = gcalc[sel]
-    gdiff = g - gcalc
-    diffzero = -0.8 * np.max(g) * np.ones_like(g)
-    # plot figure
-    ax.plot(r, g, 'bo', label="G(r) Data")
-    ax.plot(r, gcalc, 'r-', label="G(r) Fit")
-    ax.plot(r, gdiff + diffzero, 'g-', label="G(r) Diff")
-    ax.plot(r, diffzero, 'k-')
-    ax.set_xlabel(r"$r (\AA)$")
-    ax.set_ylabel(r"$G (\AA^{-2})$")
-    ax.legend(loc=1)
     return

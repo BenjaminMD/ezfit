@@ -1,27 +1,8 @@
-from diffpy.srfit.fitbase import FitResults
 from matplotlib import pyplot as plt
 from ezfit import FitPDF, Contribution
 from ezpdf import plot_PDF
 from pathlib import Path
 from glob import glob
-
-
-def get_atoms(fit, phase, element):
-    fc = fit.recipe.PDF
-    phase_atoms = {}
-    pg = getattr(fc, phase)
-    atoms = pg.phase.getScatterers()
-    phase_atoms[f"{phase}"] = [atom for atom in atoms if atom.name.startswith(element)]
-    return phase_atoms
-
-
-def constrain_Bisos(recipe, Bisos_dict):
-    for phase, atom_list in Bisos_dict.items():
-        if atom_list:
-            constraints = [f"{phase}_{atom.name}_Biso" for atom in atom_list]
-            first_Biso = atom_list[0].Biso
-            for constraint in constraints[1:]:
-                recipe.constrain(constraint, first_Biso)
 
 
 data_file = glob("./gr/SBa200.gr")[0]

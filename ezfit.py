@@ -3,12 +3,12 @@ from diffpy.srfit.fitbase import FitResults
 from itertools import count
 from pathlib import Path
 from typing import List
-import numpy as np
 from . import diffpy_wrap as dw
 from .contribution import Contribution
 import toml
 
 from .ezconstraints import Ezrestraint
+
 
 def _phase_counter(self, phase):
     if not hasattr(self, f"{phase}_count"):
@@ -38,7 +38,7 @@ def _fetch_function(phase, function):
         "spheroidalCF2":
             (CF.spheroidalCF2, ["r", f"{phase}_psize", f"{phase}_axrat"]),
         "lognormalSphericalCF":
-            (CF.lognormalSphericalCF, ["r", f"{phase}_psize", f"{phase}_sig"],),
+            (CF.lognormalSphericalCF, ["r", f"{phase}_psize", f"{phase}_sig"]),
         "sheetCF":
             (CF.sheetCF, ["r", f"{phase}_sthick"]),
         "shellCF":
@@ -54,7 +54,8 @@ def _fetch_function(phase, function):
 def create_cif_files_string(phases, config):
     cif_files = {}
     for phase in list(phases):
-        cif_files[f"{phase}"] = f'{config["files"]["cifs"]}{phase.split("Γ")[0]}.cif'
+        cif = config["files"]["cifs"]
+        cif_files[f"{phase}"] = f'{cif}{phase.split("Γ")[0]}.cif'
 
     return cif_files
 
@@ -100,10 +101,15 @@ class FitPDF(Ezrestraint):
         self.config = self.load_toml_config(config_location)
 
         self.cif_files = create_cif_files_string(self.phases, self.config)
-        self.equation = create_equation_string(self.phases, self.nanoparticle_shapes)
-        self.functions = create_functions(self.phases, self.nanoparticle_shapes)
+        self.equation = create_equation_string(
+            self.phases,
+            self.nanoparticle_shapes
+        )
+        self.functions = create_functions(
+            self.phases,
+            self.nanoparticle_shapes
+        )
         self.dw = dw
-
 
     def load_toml_config(self, config_location: str = ""):
         if config_location:
