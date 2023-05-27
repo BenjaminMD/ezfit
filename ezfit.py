@@ -131,7 +131,7 @@ class FitPDF(Ezrestraint):
     def add_instr_params(self) -> None:
         print("attempting to fit instrumental parameters")
         if len(self.pgs) != 1:
-            raise ValueError("determining instrument param only one pg allowed")
+            raise ValueError("instrument param only one pg allowed")
         pg = list(self.pgs.values())[0]
         self.recipe.addVar(
             pg.qdamp, name="qdamp", value=0.1, fixed=True, tags="qdamp"
