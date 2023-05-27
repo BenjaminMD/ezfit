@@ -8,6 +8,7 @@ from . import diffpy_wrap as dw
 from .contribution import Contribution
 import toml
 
+from .ezconstraints import Ezrestraint
 
 def _phase_counter(self, phase):
     if not hasattr(self, f"{phase}_count"):
@@ -30,17 +31,22 @@ def _parse_phases(self, phases):
 
 def _fetch_function(phase, function):
     func_param = {
-        "sphericalCF": (CF.sphericalCF, ["r", f"{phase}_psize"]),
-        "spheroidalCF": (CF.spheroidalCF, ["r", f"{phase}_erad", f"{phase}_prad"]),
-        "spheroidalCF2": (CF.spheroidalCF2, ["r", f"{phase}_psize", f"{phase}_axrat"]),
-        "lognormalSphericalCF": (
-            CF.lognormalSphericalCF,
-            ["r", f"{phase}_psize", f"{phase}_sig"],
-        ),
-        "sheetCF": (CF.sheetCF, ["r", f"{phase}_sthick"]),
-        "shellCF": (CF.shellCF, ["r", f"{phase}_radius", f"{phase}_thickness"]),
-        "shellCF2": (CF.shellCF, ["r", f"{phase}_a", f"{phase}_delta"]),
-        "bulkCF": (lambda r: 1, ["r"]),
+        "sphericalCF":
+            (CF.sphericalCF, ["r", f"{phase}_psize"]),
+        "spheroidalCF":
+            (CF.spheroidalCF, ["r", f"{phase}_erad", f"{phase}_prad"]),
+        "spheroidalCF2":
+            (CF.spheroidalCF2, ["r", f"{phase}_psize", f"{phase}_axrat"]),
+        "lognormalSphericalCF":
+            (CF.lognormalSphericalCF, ["r", f"{phase}_psize", f"{phase}_sig"],),
+        "sheetCF":
+            (CF.sheetCF, ["r", f"{phase}_sthick"]),
+        "shellCF":
+            (CF.shellCF, ["r", f"{phase}_radius", f"{phase}_thickness"]),
+        "shellCF2":
+            (CF.shellCF, ["r", f"{phase}_a", f"{phase}_delta"]),
+        "bulkCF":
+            (lambda r: 1, ["r"]),
     }
     return func_param[function]
 
@@ -71,12 +77,12 @@ def create_functions(phases, nanoparticle_shapes):
     return functions
 
 
-class FitPDF:
+class FitPDF(Ezrestraint):
     def __init__(
         self,
         file: str,
         contributions: List[Contribution],
-        config_location: str = None,
+        config_location: str = "",
     ):
 
         self.phases = [contribution.cif_name for contribution in contributions]
@@ -98,12 +104,13 @@ class FitPDF:
         self.functions = create_functions(self.phases, self.nanoparticle_shapes)
         self.dw = dw
 
-    def load_toml_config(self, config_location: str = None):
-        if config_location is None:
+
+    def load_toml_config(self, config_location: str = ""):
+        if config_location:
+            config_path = Path(config_location).expanduser().resolve()
+        else:
             cwd = Path().resolve()
             config_path = list(Path(cwd).glob("*.toml"))[0]
-        else:
-            config_path = Path(config_location).expanduser().resolve()
         config: dict = toml.load(config_path)
         return config
 
@@ -119,6 +126,8 @@ class FitPDF:
         if not self.config["PDF"]:
             self.add_instr_params()
 
+        self.fc = self.recipe.PDF
+
     def add_instr_params(self) -> None:
         print("attempting to fit instrumental parameters")
         if len(self.pgs) != 1:
@@ -126,61 +135,21 @@ class FitPDF:
         pg = list(self.pgs.values())[0]
         self.recipe.addVar(
             pg.qdamp, name="qdamp", value=0.1, fixed=True, tags="qdamp"
-        ).boundRange(0.0)
+        ).boundRange(0.0)  # type: ignore
 
         self.recipe.addVar(
             pg.qbroad, name="qbroad", value=0.1, fixed=True, tags="qbroad"
-        ).boundRange(0.0)
+        ).boundRange(0.0)  # type: ignore
 
         self.config["param_order"][-1]["free"].extend(["qdamp", "qbroad"])
 
     def apply_restraints(self):
-        recipe = self.recipe
-        for phase in self.phases:
-
-            delta2 = getattr(self.recipe, f"{phase}_delta2")
-            recipe.restrain(delta2, lb=0, ub=8, sig=1e-3)
-            delta2.value = 2
-
-            # biso stuff --------
-            fc = recipe.PDF
-            pg = getattr(fc, phase)
-            atoms: typing.List[ParameterSet] = pg.phase.getScatterers()
-
-            for atom in atoms:
-                site = atom.name
-                Biso = getattr(self.recipe, f"{phase}_{site}_Biso")
-                recipe.restrain(Biso, lb=0.1, ub=5, sig=1e-3)
-
-            # biso stuff --------
-
-            scale = getattr(self.recipe, f"{phase}_scale")
-            recipe.restrain(scale, lb=0.01, ub=2, sig=1e-3)
-            scale.value = 1
-
-            recipe.fix("all")
-            recipe.free("occ")
-
-            for occ_name in recipe.getNames():
-                occ = getattr(recipe, occ_name)
-                recipe.restrain(occ, lb=0.0, ub=1, sig=1e-3)
-            recipe.fix("all")
-
-            for abc in ["a", "b", "c"]:
-                try:
-                    lat = getattr(self.recipe, f"{phase}_{abc}")
-                    lb_lat = lat.value - 0.5
-                    ub_lat = lat.value + 0.5
-                    recipe.restrain(lat, lb=lb_lat, ub=ub_lat, sig=1e-3)
-                except AttributeError:
-                    pass
-
-            for func in self.functions.values():
-                params = func[1][1:]
-                for p in params:
-                    param = getattr(self.recipe, p)
-                    recipe.restrain(param, lb=10, ub=100, sig=1e-3)
-                    param.value = 50
+        self.restrain_param('delta2', lb=0.0, ub=8.0, initial=1)
+        self.restrain_param('scale', lb=0.0, ub=1.0, initial=1)
+        self.restrain_param('adp', lb=0.0, ub=5.0, initial=0)
+        self.restrain_param("occ", lb=0.0, ub=1.0, initial=1)
+        self.restrain_param("cfs", lb=8.0, ub=100.0, initial=80)
+        self.restrain_param("lat", lr=0.5)
 
     def create_param_order(self):
         nCF = []

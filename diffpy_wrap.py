@@ -155,7 +155,7 @@ def _initialize_recipe(
     fc: FitContribution = getattr(recipe, fc_name)
     if functions:
         for name, (_, argnames) in functions.items():
-            _add_params_in_fc(recipe, fc, argnames[1:], tags=[name])
+            _add_params_in_fc(recipe, fc, argnames[1:], tags=[name, "cfs"])
     for name in crystals.keys():
         pg: PDFGenerator = getattr(fc, name)
         _add_params_in_pg(recipe, pg, meta_data)
@@ -166,13 +166,14 @@ def _initialize_recipe(
 def create_recipe_from_files(
         equation: str,
         cif_files: typing.Dict[str, str],
-        data_file: typing.Dict[str, str],
+        data_file: str,
         functions: typing.Dict[
                 str, typing.Tuple[typing.Callable, typing.List[str]]
             ] = {},
         meta_data: typing.Dict[str, typing.Union[str, int, float]] = None,
         fc_name: str = "PDF"
-) -> FitRecipe:
+) -> typing.Tuple[FitRecipe, typing.Dict[str, PDFGenerator]]:
+
     if meta_data is None:
         meta_data = {}
     crystals = {n: loadCrystal(f) for n, f in cif_files.items()}
