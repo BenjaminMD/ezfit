@@ -55,8 +55,8 @@ def _fetch_function(phase, function):
         (CF.shellCF, ['r', f'{phase}_radius', f'{phase}_thickness']),
         'shellCF2':
         (CF.shellCF, ['r', f'{phase}_a', f'{phase}_delta']),
-        'bulkCF':
-        (lambda r: 1, ['r']),
+        'bulfkCF':
+        (lambda r: r * 1, ['r']),
         }
     return func_param[function]
 
@@ -121,7 +121,8 @@ class FitPDF(GetScales):
 
             delta2 = getattr(self.recipe, f'{phase}_delta2')
             recipe.restrain(delta2, lb=0, ub=5, sig=1e-3)
-            delta2.value = 1
+            delta2.value = 2
+
             
             # biso stuff --------
             fc = recipe.PDF
@@ -131,15 +132,9 @@ class FitPDF(GetScales):
             for atom in atoms:
                 site = atom.name 
                 Biso = getattr(self.recipe, f'{phase}_{site}_Biso')
-                recipe.restrain(Biso, lb=0.01, ub=4, sig=1e-3)
-            # Biso should be a value between 0.4 and 4
+                recipe.restrain(Biso, lb=0.1, ub=2, sig=1e-3)
+            
             # biso stuff --------
-
-            for atom in atoms:
-                site = atom.name
-                Occ = getattr(self.recipe, f'{phase}_{site}_occ')
-                recipe.restrain(Occ, lb=0, ub=1, sig=1e-3)
-            # Occupancies cannot be higher then 1 and lower then 0
 
             scale = getattr(self.recipe, f'{phase}_scale')
             recipe.restrain(scale, lb=0.01, ub=2, sig=1e-3)
@@ -148,8 +143,8 @@ class FitPDF(GetScales):
             for abc in ['a', 'b', 'c']:
                 try:
                     lat = getattr(self.recipe, f'{phase}_{abc}')
-                    lb_lat = lat.value - 1
-                    ub_lat = lat.value + 1
+                    lb_lat = lat.value - 0.5
+                    ub_lat = lat.value + 0.5
                     recipe.restrain(lat, lb=lb_lat, ub=ub_lat, sig=1e-3)
                 except AttributeError:
                     pass
@@ -158,8 +153,8 @@ class FitPDF(GetScales):
                 params = func[1][1:]
                 for p in params:
                     param = getattr(self.recipe, p)
-                    recipe.restrain(param, lb=5, ub=100, sig=1e-3)
-                    param.value = 10
+                    recipe.restrain(param, lb=10, ub=100, sig=1e-3)
+                    param.value = 50
 
     def create_param_order(self):
         nCF = []
@@ -169,20 +164,9 @@ class FitPDF(GetScales):
                     nCF.append(varn)
         nCF = [n for n in nCF if n]
         self.param_order = [
-            
-            ['free', 'scale', 'lat'],
-            
-            #['free'],
+            ['free', 'lat', 'scale'],
             ['free', *nCF],
-<<<<<<< HEAD
-            ['free', 'adp', 'delta2'],
-=======
             ['free', 'delta2', 'adp'],
-            #['fix', 'lat'],
-            
-            #['free', 'occ']
->>>>>>> b38a249dde29806a53eef0116a53b67d1e2d8871
-            #['free', 'xyz']
         ]
 
     def run_fit(self):
@@ -201,12 +185,8 @@ class FitPDF(GetScales):
         res = FitResults(self.recipe)
         if self.config['Verbose']['results']:
             res.printResults()
-        try:
-            self.molscale, self.weighscale = self.calc_scale()
-            self.all_scales = {'mol_scale': self.molscale, 'wt_scale': self.weighscale}
-            print('Mol Scales:\n', [f'{k} = {v:1.3}' for k, v in self.molscale.items()])
-            print('Weight Scales:\n', [f'{k} = {v:1.3}' for k, v in self.weighscale.items()])
-        except:
-            self.all_scales = f'\n\ncalculation for scales failed because of something...'
-            print(self.all_scales)
+        self.molscale, self.weighscale = self.calc_scale()
+        self.all_scales = {'mol_scale': self.molscale, 'wt_scale': self.weighscale}
+        print('Mol Scales:\n', [f'{k} = {v:1.3}' for k, v in self.molscale.items()])
+        print('Weight Scales:\n', [f'{k} = {v:1.3}' for k, v in self.weighscale.items()])
         return res
