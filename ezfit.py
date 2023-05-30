@@ -58,8 +58,8 @@ def _fetch_function(phase, function):
         (CF.shellCF, ['r', f'{phase}_radius', f'{phase}_thickness']),
         'shellCF2':
         (CF.shellCF, ['r', f'{phase}_a', f'{phase}_delta']),
-        'bulfkCF':
-        (lambda r: r * 1, ['r']),
+        'bulkCF':
+        (lambda r: 1, ['r']),
         }
     return func_param[function]
 
@@ -155,7 +155,7 @@ class FitPDF():
             ['free', 'lat', 'scale'],
             ['free', *nCF],
             ['free', 'adp', 'delta2'],
-            ['free', 'all']
+            #['free', 'xyz']
         ]
 
     def run_fit(self):

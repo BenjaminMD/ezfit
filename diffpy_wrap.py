@@ -25,11 +25,7 @@ def _create_recipe(
     for name, crystal in crystals.items():
         pg = PDFGenerator(name)
         pg.setStructure(crystal, periodic=True)
-<<<<<<< HEAD:diffpy_wrap.py
         pg.parallel(32)  # pg._calc.evaluatortype = 'OPTIMIZED'
-=======
-        pg.parallel(32)
->>>>>>> 9d78f14a1585e7903dac2b970d31e713dec3c24b:ezfit/diffpy_wrap.py
         fc.addProfileGenerator(pg)
     if functions:
         for name, (f, argnames) in functions.items():
@@ -111,15 +107,25 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
             tags=_get_tags(name, "adp")
         ).boundRange(0.)
     xyzpars = pg.phase.sgpars.xyzpars
-
     for par in xyzpars:
         par_name = _rename_par(par.name, atoms)
-        recipe.addVar(
-            par,
-            name=_get_name(name, par_name),
-            fixed=True,
-            tags=_get_tags(name, "xyz")
-        )
+        try:
+            recipe.addVar(
+                par,
+                name=_get_name(name, par_name),
+                fixed=True,
+                tags=_get_tags(name, "xyz")
+            )
+        except ValueError:
+            print(f'{name}_{par_name} is constrained')
+    # for par in xyzpars:
+    #     par_name = _rename_par(par.name, atoms)
+    #     recipe.addVar(
+    #         par,
+    #         name=_get_name(name, par_name),
+    #         fixed=True,
+    #         tags=_get_tags(name, "xyz")
+    #     )
     for atom in atoms:
         atom_type = filter(lambda x: x.isalpha(), atom.name)
         atom_type = ''.join(atom_type)
@@ -249,7 +255,6 @@ def optimize_params_manually(
 ) -> None:
 
     from warnings import warn
-    warn("Felix Fabio? Do we really need the functionality to fix a step during the fit or do we just want to free one by one", DeprecationWarning)
     n = len(steps)
     fc: FitContribution = getattr(recipe, fc_name)
     p: Profile = fc.profile
@@ -259,7 +264,7 @@ def optimize_params_manually(
         eval(f'recipe.{step[0]}(*{step[1:]})')
         if print_step:
             print(
-                "Step {} / {}: refine {}".format(
+                "Running: {} / {}: {}".format(
                     i + 1, n, ", ".join(recipe.getNames())
                 ),
                 end="\r"
