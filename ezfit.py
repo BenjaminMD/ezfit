@@ -140,7 +140,7 @@ class FitPDF:
 
             delta2 = getattr(self.recipe, f"{phase}_delta2")
             recipe.restrain(delta2, lb=0, ub=8, sig=1e-3)
-            delta2.value = 2
+            delta2.value = 4
 
             # biso stuff --------
             fc = recipe.PDF
@@ -150,7 +150,7 @@ class FitPDF:
             for atom in atoms:
                 site = atom.name
                 Biso = getattr(self.recipe, f"{phase}_{site}_Biso")
-                recipe.restrain(Biso, lb=0.1, ub=5, sig=1e-3)
+                recipe.restrain(Biso, lb=0.1, ub=4, sig=1e-3)
 
             # biso stuff --------
 
