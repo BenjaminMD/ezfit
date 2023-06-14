@@ -5,6 +5,7 @@ from diffpy.srfit.fitbase import FitContribution, FitRecipe, Profile
 from diffpy.srfit.fitbase.parameterset import ParameterSet
 from diffpy.srfit.pdf import PDFGenerator, PDFParser
 from diffpy.srfit.fitbase import FitResults
+from ezpdf import get_gr
 from pyobjcryst import loadCrystal
 from pyobjcryst.crystal import Crystal
 from scipy.optimize import least_squares
@@ -258,14 +259,25 @@ def save_results(
     -------
     None.
     """
+    r, gobs, gcalc, gdiff, baseline, gr_composition = get_gr(recipe)
+    phases = list(gr_composition.keys())
+    header = ['r', 'g(r)', 'g(r)_calc', 'g(r)_diff', *phases]
+    data = np.vstack([r, gobs, gcalc, gdiff, *gr_composition.values()]).T
+
     d_path = Path(directory)
     d_path.mkdir(parents=True, exist_ok=True)
     f_path = d_path.joinpath(file_stem)
     fr = FitResults(recipe)
     fr.saveResults(str(f_path.with_suffix(".res")), footer=f'{footer}')
     fc: FitContribution = getattr(recipe, fc_name)
-    profile: Profile = fc.profile
-    profile.savetxt(str(f_path.with_suffix(".fgr")))
+    # profile: Profile = fc.profile
+
+    np.savetxt(
+        str(f_path.with_suffix(".fgr")),
+        data, header=';'.join(header),
+        comments='', delimiter=';'
+    )
+    # profile.savetxt(str(f_path.with_suffix(".fgr")))
     if pg_names is not None:
         for pg_name in pg_names:
             pg: PDFGenerator = getattr(fc, pg_name)
