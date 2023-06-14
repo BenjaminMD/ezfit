@@ -150,12 +150,9 @@ class FitPDF(Ezrestraint):
         self.config["param_order"][-1]["free"].extend(["qdamp", "qbroad"])
 
     def apply_restraints(self):
-        self.restrain_param('delta2', lb=0.0, ub=8.0, initial=1)
-        self.restrain_param('scale', lb=0.0, ub=1.0, initial=1)
-        self.restrain_param('adp', lb=0.0, ub=5.0, initial=0)
-        self.restrain_param("occ", lb=0.0, ub=1.0, initial=1)
-        self.restrain_param("cfs", lb=8.0, ub=100.0, initial=80)
-        self.restrain_param("lat", lr=0.5)
+        print(self.config)
+        for param in self.config["Restraints"].keys():
+            self.restrain_param(param, self.config)
 
     def create_param_order(self):
         nCF = []

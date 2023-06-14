@@ -25,8 +25,16 @@ class Ezrestraint:
         for constraint in constraints[1:]:
             recipe.constrain(constraint, first_param)
 
-    def restrain_param(self, param, lb=None, ub=None, lr=None, initial=None):
+    def restrain_param(self, param, config, initial=None):
+        lr = None
+        lb = None
+        ub = None
         recipe = self.recipe
+        lbubini = config["Restraints"][param]
+        if type(lbubini) != float:
+            lb, ub, initial = lbubini
+        else:
+            lr = lbubini
         recipe.fix("all")
         recipe.free(param)
         for param_name in recipe.getNames():
