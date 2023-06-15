@@ -28,6 +28,7 @@ def _create_recipe(
         pg.setStructure(crystal, periodic=True)
         pg.parallel(32)
         #pg._calc.evaluatortype = 'OPTIMIZED'
+        #pg._calc.evaluatortype = 'BASIC'
         fc.addProfileGenerator(pg)
 
         pgs[name] = pg

@@ -22,7 +22,6 @@ cfs = [0.0, 100.0, 50.0]
 occ = [0.0, 1.0, 1.0]
 lat = 0.5
 
-
 [[param_order]]
 free = ["lat", "scale"]
 fix = []

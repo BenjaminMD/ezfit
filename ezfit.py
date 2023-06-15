@@ -154,6 +154,7 @@ class FitPDF(Ezrestraint):
         for param in self.config["Restraints"].keys():
             self.restrain_param(param, self.config)
 
+
     def create_param_order(self):
         nCF = []
         for func in self.functions.values():
