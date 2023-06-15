@@ -3,10 +3,11 @@ from diffpy.srfit.fitbase import FitResults
 from itertools import count
 from pathlib import Path
 from typing import List
-import numpy as np
 from . import diffpy_wrap as dw
 from .contribution import Contribution
 import toml
+
+from .ezconstraints import Ezrestraint
 
 
 def _phase_counter(self, phase):
@@ -30,17 +31,22 @@ def _parse_phases(self, phases):
 
 def _fetch_function(phase, function):
     func_param = {
-        "sphericalCF": (CF.sphericalCF, ["r", f"{phase}_psize"]),
-        "spheroidalCF": (CF.spheroidalCF, ["r", f"{phase}_erad", f"{phase}_prad"]),
-        "spheroidalCF2": (CF.spheroidalCF2, ["r", f"{phase}_psize", f"{phase}_axrat"]),
-        "lognormalSphericalCF": (
-            CF.lognormalSphericalCF,
-            ["r", f"{phase}_psize", f"{phase}_sig"],
-        ),
-        "sheetCF": (CF.sheetCF, ["r", f"{phase}_sthick"]),
-        "shellCF": (CF.shellCF, ["r", f"{phase}_radius", f"{phase}_thickness"]),
-        "shellCF2": (CF.shellCF, ["r", f"{phase}_a", f"{phase}_delta"]),
-        "bulkCF": (lambda r: 1, ["r"]),
+        "sphericalCF":
+            (CF.sphericalCF, ["r", f"{phase}_psize"]),
+        "spheroidalCF":
+            (CF.spheroidalCF, ["r", f"{phase}_erad", f"{phase}_prad"]),
+        "spheroidalCF2":
+            (CF.spheroidalCF2, ["r", f"{phase}_psize", f"{phase}_axrat"]),
+        "lognormalSphericalCF":
+            (CF.lognormalSphericalCF, ["r", f"{phase}_psize", f"{phase}_sig"]),
+        "sheetCF":
+            (CF.sheetCF, ["r", f"{phase}_sthick"]),
+        "shellCF":
+            (CF.shellCF, ["r", f"{phase}_radius", f"{phase}_thickness"]),
+        "shellCF2":
+            (CF.shellCF, ["r", f"{phase}_a", f"{phase}_delta"]),
+        "bulkCF":
+            (lambda r: 1, ["r"]),
     }
     return func_param[function]
 
@@ -48,7 +54,8 @@ def _fetch_function(phase, function):
 def create_cif_files_string(phases, config):
     cif_files = {}
     for phase in list(phases):
-        cif_files[f"{phase}"] = f'{config["files"]["cifs"]}{phase.split("Γ")[0]}.cif'
+        cif = config["files"]["cifs"]
+        cif_files[f"{phase}"] = f'{cif}{phase.split("Γ")[0]}.cif'
 
     return cif_files
 
@@ -71,12 +78,12 @@ def create_functions(phases, nanoparticle_shapes):
     return functions
 
 
-class FitPDF:
+class FitPDF(Ezrestraint):
     def __init__(
         self,
         file: str,
         contributions: List[Contribution],
-        config_location: str = None,
+        config_location: str = "",
     ):
 
         self.phases = [contribution.cif_name for contribution in contributions]
@@ -94,16 +101,22 @@ class FitPDF:
         self.config = self.load_toml_config(config_location)
 
         self.cif_files = create_cif_files_string(self.phases, self.config)
-        self.equation = create_equation_string(self.phases, self.nanoparticle_shapes)
-        self.functions = create_functions(self.phases, self.nanoparticle_shapes)
+        self.equation = create_equation_string(
+            self.phases,
+            self.nanoparticle_shapes
+        )
+        self.functions = create_functions(
+            self.phases,
+            self.nanoparticle_shapes
+        )
         self.dw = dw
 
-    def load_toml_config(self, config_location: str = None):
-        if config_location is None:
+    def load_toml_config(self, config_location: str = ""):
+        if config_location:
+            config_path = Path(config_location).expanduser().resolve()
+        else:
             cwd = Path().resolve()
             config_path = list(Path(cwd).glob("*.toml"))[0]
-        else:
-            config_path = Path(config_location).expanduser().resolve()
         config: dict = toml.load(config_path)
         return config
 
@@ -119,68 +132,28 @@ class FitPDF:
         if not self.config["PDF"]:
             self.add_instr_params()
 
+        self.fc = self.recipe.PDF
+
     def add_instr_params(self) -> None:
         print("attempting to fit instrumental parameters")
         if len(self.pgs) != 1:
-            raise ValueError("determining instrument param only one pg allowed")
+            raise ValueError("instrument param only one pg allowed")
         pg = list(self.pgs.values())[0]
         self.recipe.addVar(
             pg.qdamp, name="qdamp", value=0.1, fixed=True, tags="qdamp"
-        ).boundRange(0.0)
+        ).boundRange(0.0)  # type: ignore
 
         self.recipe.addVar(
             pg.qbroad, name="qbroad", value=0.1, fixed=True, tags="qbroad"
-        ).boundRange(0.0)
+        ).boundRange(0.0)  # type: ignore
 
         self.config["param_order"][-1]["free"].extend(["qdamp", "qbroad"])
 
     def apply_restraints(self):
-        recipe = self.recipe
-        for phase in self.phases:
+        print(self.config)
+        for param in self.config["Restraints"].keys():
+            self.restrain_param(param, self.config)
 
-            delta2 = getattr(self.recipe, f"{phase}_delta2")
-            recipe.restrain(delta2, lb=0, ub=8, sig=1e-3)
-            delta2.value = 4
-
-            # biso stuff --------
-            fc = recipe.PDF
-            pg = getattr(fc, phase)
-            atoms: typing.List[ParameterSet] = pg.phase.getScatterers()
-
-            for atom in atoms:
-                site = atom.name
-                Biso = getattr(self.recipe, f"{phase}_{site}_Biso")
-                recipe.restrain(Biso, lb=0.1, ub=4, sig=1e-3)
-
-            # biso stuff --------
-
-            scale = getattr(self.recipe, f"{phase}_scale")
-            recipe.restrain(scale, lb=0.01, ub=2, sig=1e-3)
-            scale.value = 1
-
-            recipe.fix("all")
-            recipe.free("occ")
-
-            for occ_name in recipe.getNames():
-                occ = getattr(recipe, occ_name)
-                recipe.restrain(occ, lb=0.0, ub=1, sig=1e-3)
-            recipe.fix("all")
-
-            for abc in ["a", "b", "c"]:
-                try:
-                    lat = getattr(self.recipe, f"{phase}_{abc}")
-                    lb_lat = lat.value - 0.5
-                    ub_lat = lat.value + 0.5
-                    recipe.restrain(lat, lb=lb_lat, ub=ub_lat, sig=1e-3)
-                except AttributeError:
-                    pass
-
-            for func in self.functions.values():
-                params = func[1][1:]
-                for p in params:
-                    param = getattr(self.recipe, p)
-                    recipe.restrain(param, lb=10, ub=100, sig=1e-3)
-                    param.value = 50
 
     def create_param_order(self):
         nCF = []

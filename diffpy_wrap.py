@@ -5,6 +5,7 @@ from diffpy.srfit.fitbase import FitContribution, FitRecipe, Profile
 from diffpy.srfit.fitbase.parameterset import ParameterSet
 from diffpy.srfit.pdf import PDFGenerator, PDFParser
 from diffpy.srfit.fitbase import FitResults
+from ezpdf import get_gr
 from pyobjcryst import loadCrystal
 from pyobjcryst.crystal import Crystal
 from scipy.optimize import least_squares
@@ -26,11 +27,12 @@ def _create_recipe(
         pg = PDFGenerator(name)
         pg.setStructure(crystal, periodic=True)
         pg.parallel(32)
-        pg._calc.evaluatortype = 'BASIC'
+        #pg._calc.evaluatortype = 'OPTIMIZED'
+        #pg._calc.evaluatortype = 'BASIC'
         fc.addProfileGenerator(pg)
-        
+
         pgs[name] = pg
-        
+
     if functions:
         for name, (f, argnames) in functions.items():
             fc.registerFunction(f, name=name, argnames=argnames)
@@ -113,7 +115,7 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
         atom_type = ''.join(atom_type)
         tag_list = [
                 *_get_tags(name, "occ"),
-                *_get_tags(name, f"occ{atom_type}")
+                *_get_tags(name, f"occ_{atom_type}")
             ]
         par = atom.occ
         recipe.addVar(
@@ -155,7 +157,7 @@ def _initialize_recipe(
     fc: FitContribution = getattr(recipe, fc_name)
     if functions:
         for name, (_, argnames) in functions.items():
-            _add_params_in_fc(recipe, fc, argnames[1:], tags=[name])
+            _add_params_in_fc(recipe, fc, argnames[1:], tags=[name, "cfs"])
     for name in crystals.keys():
         pg: PDFGenerator = getattr(fc, name)
         _add_params_in_pg(recipe, pg, meta_data)
@@ -166,13 +168,14 @@ def _initialize_recipe(
 def create_recipe_from_files(
         equation: str,
         cif_files: typing.Dict[str, str],
-        data_file: typing.Dict[str, str],
+        data_file: str,
         functions: typing.Dict[
                 str, typing.Tuple[typing.Callable, typing.List[str]]
             ] = {},
         meta_data: typing.Dict[str, typing.Union[str, int, float]] = None,
         fc_name: str = "PDF"
-) -> FitRecipe:
+) -> typing.Tuple[FitRecipe, typing.Dict[str, PDFGenerator]]:
+
     if meta_data is None:
         meta_data = {}
     crystals = {n: loadCrystal(f) for n, f in cif_files.items()}
@@ -257,14 +260,25 @@ def save_results(
     -------
     None.
     """
+    r, gobs, gcalc, gdiff, baseline, gr_composition = get_gr(recipe)
+    phases = list(gr_composition.keys())
+    header = ['r', 'g(r)', 'g(r)_calc', 'g(r)_diff', *phases]
+    data = np.vstack([r, gobs, gcalc, gdiff, *gr_composition.values()]).T
+
     d_path = Path(directory)
     d_path.mkdir(parents=True, exist_ok=True)
     f_path = d_path.joinpath(file_stem)
     fr = FitResults(recipe)
     fr.saveResults(str(f_path.with_suffix(".res")), footer=f'{footer}')
     fc: FitContribution = getattr(recipe, fc_name)
-    profile: Profile = fc.profile
-    profile.savetxt(str(f_path.with_suffix(".fgr")))
+    # profile: Profile = fc.profile
+
+    np.savetxt(
+        str(f_path.with_suffix(".fgr")),
+        data, header=';'.join(header),
+        comments='', delimiter=';'
+    )
+    # profile.savetxt(str(f_path.with_suffix(".fgr")))
     if pg_names is not None:
         for pg_name in pg_names:
             pg: PDFGenerator = getattr(fc, pg_name)
@@ -274,48 +288,4 @@ def save_results(
             ).with_suffix(".cif")
             with cif_path.open("w") as f:
                 stru.CIFOutput(f)
-    return
-
-
-def visualize_fits(
-            ax,
-            recipe: FitRecipe,
-            xlim: typing.Tuple = None,
-            fc_name: str = "PDF"
-        ) -> None:
-    """Visualize the fits in the FitRecipe object.
-
-    Parameters
-    ----------
-    recipe :
-        The FitRecipe object.
-    xlim :
-        The boundary of the x to show in the plot.
-    fc_name :
-        The name of the FitContribution in the FitRecipe. Default "PDF".
-
-    Returns
-    -------
-    None.
-    """
-    # get data
-    fc = getattr(recipe, fc_name)
-    r = fc.profile.x
-    g = fc.profile.y
-    gcalc = fc.profile.ycalc
-    if xlim is not None:
-        sel = np.logical_and(r >= xlim[0], r <= xlim[1])
-        r = r[sel]
-        g = g[sel]
-        gcalc = gcalc[sel]
-    gdiff = g - gcalc
-    diffzero = -0.8 * np.max(g) * np.ones_like(g)
-    # plot figure
-    ax.plot(r, g, 'bo', label="G(r) Data")
-    ax.plot(r, gcalc, 'r-', label="G(r) Fit")
-    ax.plot(r, gdiff + diffzero, 'g-', label="G(r) Diff")
-    ax.plot(r, diffzero, 'k-')
-    ax.set_xlabel(r"$r (\AA)$")
-    ax.set_ylabel(r"$G (\AA^{-2})$")
-    ax.legend(loc=1)
     return
