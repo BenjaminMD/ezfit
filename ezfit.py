@@ -153,6 +153,8 @@ class FitPDF(Ezrestraint):
         print(self.config)
         for param in self.config["Restraints"].keys():
             self.restrain_param(param, self.config)
+        for phase in self.phases:
+            self.shared_occ(phase)
 
 
     def create_param_order(self):

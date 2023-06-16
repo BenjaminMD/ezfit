@@ -1,4 +1,5 @@
 import typing
+from typing import Tuple
 from pathlib import Path
 import numpy as np
 from diffpy.srfit.fitbase import FitContribution, FitRecipe, Profile
@@ -19,7 +20,7 @@ def _create_recipe(
             ],
         profile: Profile,
         fc_name: str = "PDF"
-) -> FitRecipe:
+) -> Tuple[FitRecipe, PDFGenerator]:
     pgs = {}
     fr = FitRecipe()
     fc = FitContribution(fc_name)
