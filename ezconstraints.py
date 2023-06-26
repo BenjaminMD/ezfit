@@ -38,7 +38,6 @@ class Ezrestraint:
             occ_eq = []
             for atom in shared_atoms:
                 occ_eq.append(f"{phase}_{atom.name}_occ")
-            print(occ_eq)
             occ_eq = " + ".join(occ_eq)
             self.recipe.newVar(f"{phase}_{atom.name}_Occ_sum")
             self.recipe.constrain(f"{phase}_{atom.name}_Occ_sum", f'{occ_eq}')

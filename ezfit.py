@@ -6,7 +6,7 @@ from typing import List
 from . import diffpy_wrap as dw
 from .contribution import Contribution
 import toml
-
+from .get_scales import GetScales
 from .ezconstraints import Ezrestraint
 
 
@@ -37,7 +37,7 @@ def _fetch_function(phase, function):
             (CF.spheroidalCF, ["r", f"{phase}_erad", f"{phase}_prad"]),
         "spheroidalCF2":
             (CF.spheroidalCF2, ["r", f"{phase}_psize", f"{phase}_axrat"]),
-        "lognormalSphericalCF":
+        "lognormalsphericalCF":
             (CF.lognormalSphericalCF, ["r", f"{phase}_psize", f"{phase}_sig"]),
         "sheetCF":
             (CF.sheetCF, ["r", f"{phase}_sthick"]),
@@ -78,7 +78,7 @@ def create_functions(phases, nanoparticle_shapes):
     return functions
 
 
-class FitPDF(Ezrestraint):
+class FitPDF(Ezrestraint, GetScales):
     def __init__(
         self,
         file: str,
@@ -150,7 +150,6 @@ class FitPDF(Ezrestraint):
         self.config["param_order"][-1]["free"].extend(["qdamp", "qbroad"])
 
     def apply_restraints(self):
-        print(self.config)
         for param in self.config["Restraints"].keys():
             self.restrain_param(param, self.config)
         for phase in self.phases:
@@ -183,6 +182,10 @@ class FitPDF(Ezrestraint):
             print_step=self.config["Verbose"]["step"],
         )
         self.res = FitResults(self.recipe)
+        self.molscale, self.weighscale = self.calc_scale()
+        self.all_scales = {'mol_scale': self.molscale, 'wt_scale': self.weighscale}
+        print('Mol Scales:\n', [f'{k} = {v:1.3}' for k, v in self.molscale.items()])
+        print('Weight Scales:\n', [f'{k} = {v:1.3}' for k, v in self.weighscale.items()])
         if self.config["Verbose"]["results"]:
             self.res.printResults()
         return self.res
