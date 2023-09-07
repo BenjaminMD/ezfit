@@ -94,7 +94,6 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
         recipe.addVar(
             par,
             name=_get_name(name, atom.name, "Biso"),
-            value=0.02,
             fixed=True,
             tags=_get_tags(name, "adp")
         ).boundRange(0.)
