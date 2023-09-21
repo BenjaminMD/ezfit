@@ -94,6 +94,10 @@ class FitPDF(Ezrestraint, GetScales):
             contribution.cif_name: contribution.formula
             for contribution in contributions
         }
+        self.names = {
+            contribution.cif_name: contribution.names
+            for contribution in contributions
+        }
 
         self.file = file
         self.phases = _parse_phases(self, self.phases)
