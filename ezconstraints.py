@@ -62,11 +62,21 @@ class Ezrestraint:
         lb = None
         ub = None
         recipe = self.recipe
-        lbubini = config["Restraints"][param]
-        if type(lbubini) != float:
-            lb, ub, initial = lbubini
+        lb_ub_ini = config["Restraints"][param]
+        print(lb_ub_ini)
+        if type(lb_ub_ini) != float:
+            if len(lb_ub_ini) == 3:
+                if type(lb_ub_ini) != float:
+                    lb, ub, initial = lb_ub_ini
+                else:
+                    lr = lb_ub_ini
+            if len(lb_ub_ini) == 2:
+                if type(lb_ub_ini) != float:
+                    lb, ub = lb_ub_ini
+                else:
+                    lr = lb_ub_ini
         else:
-            lr = lbubini
+            lr = lb_ub_ini
         recipe.fix("all")
         recipe.free(param)
         for param_name in recipe.getNames():

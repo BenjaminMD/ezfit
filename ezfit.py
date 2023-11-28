@@ -119,6 +119,7 @@ class FitPDF(Ezrestraint, GetScales):
             config_path = Path(config_location).expanduser().resolve()
         else:
             cwd = Path().resolve()
+            print(cwd)
             config_path = list(Path(cwd).glob("*.toml"))[0]
         config: dict = toml.load(config_path)
         return config
