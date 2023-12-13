@@ -1,10 +1,12 @@
 import typing
+from typing import Tuple
 from pathlib import Path
 import numpy as np
 from diffpy.srfit.fitbase import FitContribution, FitRecipe, Profile
 from diffpy.srfit.fitbase.parameterset import ParameterSet
 from diffpy.srfit.pdf import PDFGenerator, PDFParser
 from diffpy.srfit.fitbase import FitResults
+from ezpdf import get_gr
 from pyobjcryst import loadCrystal
 from pyobjcryst.crystal import Crystal
 from scipy.optimize import least_squares
@@ -18,22 +20,28 @@ def _create_recipe(
             ],
         profile: Profile,
         fc_name: str = "PDF"
-) -> FitRecipe:
+) -> Tuple[FitRecipe, PDFGenerator]:
+    pgs = {}
     fr = FitRecipe()
     fc = FitContribution(fc_name)
     for name, crystal in crystals.items():
         pg = PDFGenerator(name)
         pg.setStructure(crystal, periodic=True)
         pg.parallel(32)
-
+        pg.scatteringfactortable = "neutron"
+        #pg._calc.evaluatortype = 'OPTIMIZED'
+        #pg._calc.evaluatortype = 'BASIC'
         fc.addProfileGenerator(pg)
+
+        pgs[name] = pg
+
     if functions:
         for name, (f, argnames) in functions.items():
             fc.registerFunction(f, name=name, argnames=argnames)
     fc.setEquation(equation)
     fc.setProfile(profile, xname="r", yname="G", dyname="dG")
     fr.addContribution(fc)
-    return fr, pg
+    return fr, pgs
 
 
 def _get_tags(phase: str, param: str) -> typing.List[str]:
@@ -58,35 +66,20 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
     name: str = pg.name
     if not meta_data:
         print('No meta data found for {}'.format(name))
-        recipe.addVar(
-            pg.qdamp,
-            name='qdamp',
-            value=0.,
-            fixed=True,
-            tags='qdamp'
-        ).boundRange(0.)
-
-        recipe.addVar(
-            pg.qbroad,
-            name='qbroad',
-            value=0.,
-            fixed=True,
-            tags='qbroad'
-            ).boundRange(0.)
 
     recipe.addVar(
         pg.scale,
         name=_get_name(name, "scale"),
         value=0.,
         fixed=True,
-        tags=_get_tags(name, "scale")
+        tags=_get_tags(name, "scale") + [pg.phase.name]
     ).boundRange(0.)
     recipe.addVar(
         pg.delta2,
         name=_get_name(name, "delta2"),
         value=0.,
         fixed=True,
-        tags=_get_tags(name, "delta2")
+        tags=_get_tags(name, "delta2") + [pg.phase.name]
     ).boundRange(0.)
     latpars = pg.phase.sgpars.latpars
     for par in latpars:
@@ -102,9 +95,8 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
         recipe.addVar(
             par,
             name=_get_name(name, atom.name, "Biso"),
-            value=0.02,
             fixed=True,
-            tags=_get_tags(name, "adp")
+            tags=_get_tags(name, "adp") + [pg.phase.name]
         ).boundRange(0.)
     xyzpars = pg.phase.sgpars.xyzpars
     for par in xyzpars:
@@ -114,7 +106,7 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
                 par,
                 name=_get_name(name, par_name),
                 fixed=True,
-                tags=_get_tags(name, "xyz")
+                tags=_get_tags(name, "xyz") + [pg.phase.name]
             )
         except ValueError:
             print(f'{name}_{par_name} is constrained')
@@ -131,14 +123,14 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
         atom_type = ''.join(atom_type)
         tag_list = [
                 *_get_tags(name, "occ"),
-                *_get_tags(name, f"occ{atom_type}")
-            ]
+                *_get_tags(name, f"occ_{atom_type}")
+            ] + [pg.phase.name]
         par = atom.occ
         recipe.addVar(
             par,
             name=_get_name(name, atom.name, "occ"),
             fixed=True,
-            tags=np.unique(tag_list)
+            tags=np.unique(tag_list + [pg.phase.name])
         ).boundRange(0.)
     return
 
@@ -172,25 +164,26 @@ def _initialize_recipe(
 
     fc: FitContribution = getattr(recipe, fc_name)
     if functions:
-        for name, (_, argnames) in functions.items():
-            _add_params_in_fc(recipe, fc, argnames[1:], tags=[name])
+        for (name, (_, argnames)), penisname in zip(functions.items(), crystals.keys()):
+            _add_params_in_fc(recipe, fc, argnames[1:], tags=[name, "cfs", penisname])
     for name in crystals.keys():
         pg: PDFGenerator = getattr(fc, name)
         _add_params_in_pg(recipe, pg, meta_data)
     recipe.clearFitHooks()
-    return pg
+    return
 
 
 def create_recipe_from_files(
         equation: str,
         cif_files: typing.Dict[str, str],
-        data_file: typing.Dict[str, str],
+        data_file: str,
         functions: typing.Dict[
                 str, typing.Tuple[typing.Callable, typing.List[str]]
             ] = {},
         meta_data: typing.Dict[str, typing.Union[str, int, float]] = None,
         fc_name: str = "PDF"
-) -> FitRecipe:
+) -> typing.Tuple[FitRecipe, typing.Dict[str, PDFGenerator]]:
+
     if meta_data is None:
         meta_data = {}
     crystals = {n: loadCrystal(f) for n, f in cif_files.items()}
@@ -199,13 +192,13 @@ def create_recipe_from_files(
     profile = Profile()
     profile.loadParsedData(pp)
     profile.meta.update(meta_data)
-    recipe, pg = _create_recipe(
+    recipe, pgs = _create_recipe(
         equation, crystals, functions, profile, fc_name=fc_name
     )
-    pg = _initialize_recipe(
+    _initialize_recipe(
         recipe, functions, crystals, fc_name=fc_name, meta_data=meta_data
     )
-    return recipe, pg
+    return recipe, pgs
 
 
 def optimize_params(
@@ -220,57 +213,26 @@ def optimize_params(
 ) -> None:
 
     n = len(steps)
+    free_steps = [order["free"] for order in steps]
+    fix_steps = [order["fix"] for order in steps]
+
     fc: FitContribution = getattr(recipe, fc_name)
     p: Profile = fc.profile
     p.setCalculationRange(xmin=rmin, xmax=rmax, dx=rstep)
-    for step in steps:
+    for step in free_steps:
         recipe.fix(*step)
-    for i, step in enumerate(steps):
-        recipe.free(*step)
+    for i, (free_step, fix_step) in enumerate(zip(free_steps, fix_steps)):
+        if free_step:
+            recipe.free(*free_step)
+        if fix_step:
+            recipe.fix(*fix_step)
         if print_step:
             print(
-                "Step {} / {}: manzonied {}".format(
+                "Step {} / {}: params {}".format(
                     i + 1, n, ", ".join(recipe.getNames())
                 ),
                 end="\r"
             )
-        least_squares(
-            recipe.residual,
-            recipe.getValues(),
-            bounds=recipe.getBounds2(),
-            **kwargs
-        )
-    return
-
-
-def optimize_params_manually(
-    recipe: FitRecipe,
-    steps: typing.List[typing.List[str]],
-    rmin: float = None,
-    rmax: float = None,
-    rstep: float = None,
-    print_step: bool = True,
-    fc_name: str = "PDF",
-    **kwargs
-) -> None:
-
-    from warnings import warn
-    n = len(steps)
-    fc: FitContribution = getattr(recipe, fc_name)
-    p: Profile = fc.profile
-    p.setCalculationRange(xmin=rmin, xmax=rmax, dx=rstep)
-
-    for i, step in enumerate(steps):
-        eval(f'recipe.{step[0]}(*{step[1:]})')
-        if print_step:
-            print(
-                "Step {} / {}: processing {}".format(
-                    i + 1, n, ", ".join(recipe.getNames())
-                ),
-                end="\r"
-            )
-        if step[0] == 'fix':
-            continue
         least_squares(
             recipe.residual,
             recipe.getValues(),
@@ -306,14 +268,25 @@ def save_results(
     -------
     None.
     """
+    r, gobs, gcalc, gdiff, baseline, gr_composition = get_gr(recipe)
+    phases = list(gr_composition.keys())
+    header = ['r', 'g(r)', 'g(r)_calc', 'g(r)_diff', *phases]
+    data = np.vstack([r, gobs, gcalc, gdiff, *gr_composition.values()]).T
+
     d_path = Path(directory)
     d_path.mkdir(parents=True, exist_ok=True)
     f_path = d_path.joinpath(file_stem)
     fr = FitResults(recipe)
     fr.saveResults(str(f_path.with_suffix(".res")), footer=f'{footer}')
     fc: FitContribution = getattr(recipe, fc_name)
-    profile: Profile = fc.profile
-    profile.savetxt(str(f_path.with_suffix(".fgr")))
+    # profile: Profile = fc.profile
+
+    np.savetxt(
+        str(f_path.with_suffix(".fgr")),
+        data, header=';'.join(header),
+        comments='', delimiter=';'
+    )
+    # profile.savetxt(str(f_path.with_suffix(".fgr")))
     if pg_names is not None:
         for pg_name in pg_names:
             pg: PDFGenerator = getattr(fc, pg_name)
@@ -323,48 +296,4 @@ def save_results(
             ).with_suffix(".cif")
             with cif_path.open("w") as f:
                 stru.CIFOutput(f)
-    return
-
-
-def visualize_fits(
-            ax,
-            recipe: FitRecipe,
-            xlim: typing.Tuple = None,
-            fc_name: str = "PDF"
-        ) -> None:
-    """Visualize the fits in the FitRecipe object.
-
-    Parameters
-    ----------
-    recipe :
-        The FitRecipe object.
-    xlim :
-        The boundary of the x to show in the plot.
-    fc_name :
-        The name of the FitContribution in the FitRecipe. Default "PDF".
-
-    Returns
-    -------
-    None.
-    """
-    # get data
-    fc = getattr(recipe, fc_name)
-    r = fc.profile.x
-    g = fc.profile.y
-    gcalc = fc.profile.ycalc
-    if xlim is not None:
-        sel = np.logical_and(r >= xlim[0], r <= xlim[1])
-        r = r[sel]
-        g = g[sel]
-        gcalc = gcalc[sel]
-    gdiff = g - gcalc
-    diffzero = -0.8 * np.max(g) * np.ones_like(g)
-    # plot figure
-    ax.plot(r, g, 'bo', label="G(r) Data")
-    ax.plot(r, gcalc, 'r-', label="G(r) Fit")
-    ax.plot(r, gdiff + diffzero, 'g-', label="G(r) Diff")
-    ax.plot(r, diffzero, 'k-')
-    ax.set_xlabel(r"$r (\AA)$")
-    ax.set_ylabel(r"$G (\AA^{-2})$")
-    ax.legend(loc=1)
     return

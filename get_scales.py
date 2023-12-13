@@ -70,12 +70,14 @@ class GetScales():
             xyz_index1 = [i for i, l in enumerate(lines) if '_xyz' in l]
             xyz_index2 = [i for i, l in enumerate(lines) if i > xyz_index1[0] and 'loop_' in l]
             xyz_lines = lines[xyz_index1[0]+1:xyz_index2[0]]
+            xyz_lines = [line.strip() for line in xyz_lines if line.strip()] #removes any emtpy entry
+            #print(phase, xyz_lines) 
             if '_space_group_symop_id' in lines:
                 xyz_lines = [xyz[len(f'{i+1}'):] for i, xyz in enumerate(xyz_lines)]
             for ch in [' ', '\t', "'"]:
                 xyz_lines = [line.replace(ch, '') for line in xyz_lines] 
             self.transforms[phase] = [lambda x, y, z, coef=i: eval(f'[{coef}]') for i in xyz_lines] 
-        return self.transforms
+        return self.transforms#, print("transforms", self.transforms)
 
     def get_fract_cord(self):
         """
@@ -100,7 +102,7 @@ class GetScales():
             else:
                 data = [line.split() for line in lines[site_ind[-1]+1:] if line != '']
             self.fract_cord[phase] = pd.DataFrame(data, columns=col_names)
-        return self.fract_cord
+        return self.fract_cord#, print("fract_cord", self.fract_cord)
 
     def gen_site_pos(self):
         """
@@ -127,7 +129,7 @@ class GetScales():
                     frac[i] = [x, y, z]
                 frac = np.unique(frac, axis=0)
                 self.site_pos[phase][lab] = frac
-        return self.site_pos
+        return self.site_pos#, print("site_pos", self.site_pos)
 
     def count_atom(self):
         """
@@ -144,7 +146,7 @@ class GetScales():
                 self.atom_mult[phase][label] = np.array(pos).shape[0]
             for label, occ in zip(self.fract_cord[phase].label, self.fract_cord[phase].occupancy):
                 self.atom_mult[phase][label] *= float(occ)
-        return self.atom_mult
+        return self.atom_mult#, print("atom_mult", self.atom_mult)
 
     def get_number_density(self):
         """
@@ -160,7 +162,7 @@ class GetScales():
             n_x = list(self.atom_mult[phase].values())  #number of element x in unit cell
             dens = sum(n_x) / self.cell_volume[phase]
             self.number_dens[phase] = dens
-        return self.number_dens
+        return self.number_dens#, print("number_dens", self.number_dens)
 
     def get_xray_scat_len(self):
         """
@@ -182,8 +184,9 @@ class GetScales():
                 element = str()
                 for symbol in keys:
                     if symbol.isalpha():
-                        element += symbol
-                elements[phase].append(element)
+                        element += symbol.lower() if element else symbol  # Convert to lowercase if not the first character
+                elements[phase].append(element.capitalize())  # Capitalize the first character
+            #print("elements", elements)
             for element in elements[phase]:
                 file_path = glob(f'./ezfit/rsc/f1/*{element}*')[0]
                 _, element_keV, element_f1 = np.loadtxt(
@@ -192,7 +195,7 @@ class GetScales():
                 bi = e**2 / (4 * pi * epsilon_0 * m_e * c**2) * f
                 f1[phase].append(f)
                 self.b1[phase].append(bi)
-        return self.b1
+        return self.b1#, print("b1", self.b1)
 
     def get_avg_scat_len(self):
         """
@@ -215,7 +218,7 @@ class GetScales():
                 n[phase] += n_x[i]
             #print('f_sum', f_sum, 'n', n)
             self.avg_scat_len[phase] = f_sum[phase] / n[phase]
-        return self.avg_scat_len
+        return self.avg_scat_len#, print("avg_scat_len", self.avg_scat_len)
         
     def get_real_scales(self):
         """
@@ -231,9 +234,11 @@ class GetScales():
         for phase in self.phases:
             s[phase] = self.scales[phase] / (self.number_dens[phase] * self.avg_scat_len[phase]**2)
         sum_scales = sum(s.values())
+        #print("s", s)
+        #print("sum_scales", sum_scales)
         for phase in self.phases:
             self.real_scales[phase] = s[phase] / sum_scales
-        return self.real_scales
+        return self.real_scales#, print("real_scales", self.real_scales)
 
     def get_weight_percent(self):
         self.weight_percent = {}
@@ -241,20 +246,12 @@ class GetScales():
         for phase in self.phases:
             formula = self.formulas[phase]
             total += Formula(formula).isotope.mass * self.real_scales[phase]
+            #print(phase, "formula", formula)
+        #print("total", total)
         for phase in self.phases:
             formula = self.formulas[phase]
             self.weight_percent[phase] = Formula(formula).isotope.mass * self.real_scales[phase] / total
-        return self.weight_percent
+        return self.weight_percent#, print("weight_percent", self.weight_percent)
 
-    def get_original_weight_percent(self):
-        self.weight_percent = {}
-        total = 0
-        for phase in self.phases:
-            formula = self.formulas[phase]
-            total += Formula(formula).isotope.mass * self.scales[phase]
-        for phase in self.phases:
-            formula = self.formulas[phase]
-            self.weight_percent[phase] = Formula(formula).isotope.mass * self.scales[phase] / total
-        return self.weight_percent
 
 
