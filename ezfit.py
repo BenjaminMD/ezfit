@@ -1,5 +1,5 @@
 import diffpy.srfit.pdf.characteristicfunctions as CF
-from diffpy.srfit.fitbase import FitResults
+from diffpy.srfit.fitbase import FitResults, initializeRecipe
 from itertools import count
 from pathlib import Path
 from typing import List
@@ -168,6 +168,10 @@ class FitPDF(Ezrestraint, GetScales):
                 id = order["free"].index("cfs")
                 order["free"].pop(id)
                 order["free"].extend(nCF)
+                
+    def LoadResFromFile(self, path_to_results: str):
+        initializeRecipe(self.recipe, path_to_results)
+        
 
     def run_fit(self):
         self.apply_restraints()
@@ -182,10 +186,10 @@ class FitPDF(Ezrestraint, GetScales):
             print_step=self.config["Verbose"]["step"],
         )
         self.res = FitResults(self.recipe)
-        self.molscale, self.weighscale = self.calc_scale()
-        self.all_scales = {'mol_scale': self.molscale, 'wt_scale': self.weighscale}
-        print('Mol Scales:\n', [f'{k} = {v:1.3}' for k, v in self.molscale.items()])
-        print('Weight Scales:\n', [f'{k} = {v:1.3}' for k, v in self.weighscale.items()])
+#        self.molscale, self.weighscale = self.calc_scale()
+#        self.all_scales = {'mol_scale': self.molscale, 'wt_scale': self.weighscale}
+#        print('Mol Scales:\n', [f'{k} = {v:1.3}' for k, v in self.molscale.items()])
+#        print('Weight Scales:\n', [f'{k} = {v:1.3}' for k, v in self.weighscale.items()])
         if self.config["Verbose"]["results"]:
             self.res.printResults()
         return self.res

@@ -28,6 +28,7 @@ def _create_recipe(
         pg = PDFGenerator(name)
         pg.setStructure(crystal, periodic=True)
         pg.parallel(32)
+        pg.scatteringfactortable = "neutron"
         #pg._calc.evaluatortype = 'OPTIMIZED'
         #pg._calc.evaluatortype = 'BASIC'
         fc.addProfileGenerator(pg)

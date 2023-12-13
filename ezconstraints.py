@@ -33,17 +33,20 @@ class Ezrestraint:
         pg = getattr(self.fc, phase)
         atoms = pg.phase.getScatterers()
         atom_xyz = {i: (i.x.value, i.y.value, i.z.value) for i in atoms}
+        for atom in atoms:
+            self.recipe.restrain(f"{phase}_{atom.name}_occ", lb=0.0, ub=1.0, sig=1e-3)
         duplicate_keys = Ezrestraint.find_duplicate_keys(atom_xyz)
         for _, shared_atoms in duplicate_keys:
             occ_eq = []
             for atom in shared_atoms:
                 occ_eq.append(f"{phase}_{atom.name}_occ")
+                self.recipe.restrain(f"{phase}_{atom.name}_occ", lb=0.0, ub=1.0, sig=1e-3)
             occ_eq = " + ".join(occ_eq)
             self.recipe.newVar(f"{phase}_{atom.name}_Occ_sum")
             self.recipe.constrain(f"{phase}_{atom.name}_Occ_sum", f'{occ_eq}')
             self.recipe.restrain(f"{phase}_{atom.name}_Occ_sum", lb=0.0, ub=1.0, sig=1e-3)
 
-    @staticmethod   
+    @staticmethod
     def find_duplicate_keys(dictionary):
         value_keys = defaultdict(list)
         duplicate_keys = []
@@ -57,14 +60,18 @@ class Ezrestraint:
 
         return duplicate_keys
 
-    def restrain_param(self, param, config, initial=None):
+    def restrain_param(self, param, config):
+        initial = None
         lr = None
         lb = None
         ub = None
         recipe = self.recipe
         lbubini = config["Restraints"][param]
-        if type(lbubini) != float:
-            lb, ub, initial = lbubini
+        if type(lbubini) is not float:
+            try:
+                lb, ub, initial = lbubini
+            except ValueError:
+                lb, ub = lbubini
         else:
             lr = lbubini
         recipe.fix("all")
