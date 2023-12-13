@@ -190,19 +190,10 @@ class FitPDF(Ezrestraint, GetScales):
             print_step=self.config["Verbose"]["step"],
         )
         self.res = FitResults(self.recipe)
-<<<<<<< HEAD
 #        self.molscale, self.weighscale = self.calc_scale()
 #        self.all_scales = {'mol_scale': self.molscale, 'wt_scale': self.weighscale}
 #        print('Mol Scales:\n', [f'{k} = {v:1.3}' for k, v in self.molscale.items()])
 #        print('Weight Scales:\n', [f'{k} = {v:1.3}' for k, v in self.weighscale.items()])
-=======
-        try:
-            self.molscale, self.weightscale = self.calc_scale()
-            self.scale_msg = 'Mol Scales:\n' + f'{self.molscale}\n' + 'Weight Scales:\n' + f'{self.weightscale}'
-            print(self.scale_msg)
-        except:
-            print("Scales cannot be calculated because of CIF")
->>>>>>> 9a27b0e4ab7089f1915cd5f3098d3a8fbd92370a
         if self.config["Verbose"]["results"]:
             self.res.printResults()
         return self.res
