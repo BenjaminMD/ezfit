@@ -72,14 +72,14 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
         name=_get_name(name, "scale"),
         value=0.,
         fixed=True,
-        tags=_get_tags(name, "scale")
+        tags=_get_tags(name, "scale") + [pg.phase.name]
     ).boundRange(0.)
     recipe.addVar(
         pg.delta2,
         name=_get_name(name, "delta2"),
         value=0.,
         fixed=True,
-        tags=_get_tags(name, "delta2")
+        tags=_get_tags(name, "delta2") + [pg.phase.name]
     ).boundRange(0.)
     latpars = pg.phase.sgpars.latpars
     for par in latpars:
@@ -95,9 +95,8 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
         recipe.addVar(
             par,
             name=_get_name(name, atom.name, "Biso"),
-            value=0.02,
             fixed=True,
-            tags=_get_tags(name, "adp")
+            tags=_get_tags(name, "adp") + [pg.phase.name]
         ).boundRange(0.)
     xyzpars = pg.phase.sgpars.xyzpars
 
@@ -108,7 +107,7 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
                 par,
                 name=_get_name(name, par_name),
                 fixed=True,
-                tags=_get_tags(name, "xyz")
+                tags=_get_tags(name, "xyz") + [pg.phase.name]
             )
         except ValueError:
             print(name, par_name, 'already constrained')
@@ -118,13 +117,13 @@ def _add_params_in_pg(recipe: FitRecipe, pg: PDFGenerator, meta_data) -> None:
         tag_list = [
                 *_get_tags(name, "occ"),
                 *_get_tags(name, f"occ_{atom_type}")
-            ]
+            ] + [pg.phase.name]
         par = atom.occ
         recipe.addVar(
             par,
             name=_get_name(name, atom.name, "occ"),
             fixed=True,
-            tags=np.unique(tag_list)
+            tags=np.unique(tag_list + [pg.phase.name])
         ).boundRange(0.)
     return
 
@@ -158,8 +157,8 @@ def _initialize_recipe(
 
     fc: FitContribution = getattr(recipe, fc_name)
     if functions:
-        for name, (_, argnames) in functions.items():
-            _add_params_in_fc(recipe, fc, argnames[1:], tags=[name, "cfs"])
+        for (name, (_, argnames)), penisname in zip(functions.items(), crystals.keys()):
+            _add_params_in_fc(recipe, fc, argnames[1:], tags=[name, "cfs", penisname])
     for name in crystals.keys():
         pg: PDFGenerator = getattr(fc, name)
         _add_params_in_pg(recipe, pg, meta_data)
@@ -216,10 +215,10 @@ def optimize_params(
     for step in free_steps:
         recipe.fix(*step)
     for i, (free_step, fix_step) in enumerate(zip(free_steps, fix_steps)):
-        if fix_step:
-            recipe.fix(*fix_step)
         if free_step:
             recipe.free(*free_step)
+        if fix_step:
+            recipe.fix(*fix_step)
         if print_step:
             print(
                 "Step {} / {}: params {}".format(

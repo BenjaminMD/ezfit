@@ -94,7 +94,10 @@ class FitPDF(Ezrestraint, GetScales):
             contribution.cif_name: contribution.formula
             for contribution in contributions
         }
-
+        self.name = {
+            contribution.cif_name: contribution.name
+            for contribution in contributions
+        }
         self.file = file
         self.phases = _parse_phases(self, self.phases)
 
@@ -116,6 +119,7 @@ class FitPDF(Ezrestraint, GetScales):
             config_path = Path(config_location).expanduser().resolve()
         else:
             cwd = Path().resolve()
+            print(cwd)
             config_path = list(Path(cwd).glob("*.toml"))[0]
         config: dict = toml.load(config_path)
         return config
@@ -186,10 +190,19 @@ class FitPDF(Ezrestraint, GetScales):
             print_step=self.config["Verbose"]["step"],
         )
         self.res = FitResults(self.recipe)
+<<<<<<< HEAD
 #        self.molscale, self.weighscale = self.calc_scale()
 #        self.all_scales = {'mol_scale': self.molscale, 'wt_scale': self.weighscale}
 #        print('Mol Scales:\n', [f'{k} = {v:1.3}' for k, v in self.molscale.items()])
 #        print('Weight Scales:\n', [f'{k} = {v:1.3}' for k, v in self.weighscale.items()])
+=======
+        try:
+            self.molscale, self.weightscale = self.calc_scale()
+            self.scale_msg = 'Mol Scales:\n' + f'{self.molscale}\n' + 'Weight Scales:\n' + f'{self.weightscale}'
+            print(self.scale_msg)
+        except:
+            print("Scales cannot be calculated because of CIF")
+>>>>>>> 9a27b0e4ab7089f1915cd5f3098d3a8fbd92370a
         if self.config["Verbose"]["results"]:
             self.res.printResults()
         return self.res

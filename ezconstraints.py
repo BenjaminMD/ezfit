@@ -73,7 +73,7 @@ class Ezrestraint:
             except ValueError:
                 lb, ub = lbubini
         else:
-            lr = lbubini
+            lr = lb_ub_ini
         recipe.fix("all")
         recipe.free(param)
         for param_name in recipe.getNames():
