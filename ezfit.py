@@ -8,6 +8,7 @@ from .contribution import Contribution
 import toml
 from .get_scales import GetScales
 from .ezconstraints import Ezrestraint
+import os
 
 
 def _phase_counter(self, phase):
@@ -176,7 +177,17 @@ class FitPDF(Ezrestraint, GetScales):
     def LoadResFromFile(self, path_to_results: str):
         initializeRecipe(self.recipe, path_to_results)
         
-
+    def clean_cif_files(self):
+        VEST_bin = self.config["VESTA"]["bin"]
+        for key, cif in self.cif_files.items():
+            cif_name = cif[:-4]
+            input = f"-nogui -i {cif}"
+            output = f"-o -format=cif {cif_name}_clean.cif"
+            os.system(
+                f"{VEST_bin} {input} {output}"
+            )
+            self.cif_files[key] = f"{cif_name}_clean.cif"
+        
     def run_fit(self):
         self.apply_restraints()
         self.create_param_order()

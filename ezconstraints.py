@@ -67,7 +67,7 @@ class Ezrestraint:
         ub = None
         recipe = self.recipe
         lb_ub_ini = config["Restraints"][param]
-        if type(lbubini) is not float:
+        if type(lb_ub_ini) is not float:
             try:
                 lb, ub, initial = lb_ub_ini
             except ValueError:
