@@ -66,12 +66,12 @@ class Ezrestraint:
         lb = None
         ub = None
         recipe = self.recipe
-        lbubini = config["Restraints"][param]
+        lb_ub_ini = config["Restraints"][param]
         if type(lbubini) is not float:
             try:
-                lb, ub, initial = lbubini
+                lb, ub, initial = lb_ub_ini
             except ValueError:
-                lb, ub = lbubini
+                lb, ub = lb_ub_ini
         else:
             lr = lb_ub_ini
         recipe.fix("all")
