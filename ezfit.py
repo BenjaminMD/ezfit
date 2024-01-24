@@ -184,7 +184,7 @@ class FitPDF(Ezrestraint, GetScales):
             input = f"-nogui -i {cif}"
             output = f"-o -format=cif {cif_name}_clean.cif"
             os.system(
-                f"{VEST_bin} {input} {output}"
+                f"{VEST_bin} {input} {output} > /dev/null 2>&1"
             )
             self.cif_files[key] = f"{cif_name}_clean.cif"
         
@@ -205,6 +205,12 @@ class FitPDF(Ezrestraint, GetScales):
 #        self.all_scales = {'mol_scale': self.molscale, 'wt_scale': self.weighscale}
 #        print('Mol Scales:\n', [f'{k} = {v:1.3}' for k, v in self.molscale.items()])
 #        print('Weight Scales:\n', [f'{k} = {v:1.3}' for k, v in self.weighscale.items()])
+        try:
+            self.molscale, self.weightscale = self.calc_scale()
+            self.scale_msg = 'Mol Scales:\n' + f'{self.molscale}\n' + 'Weight Scales:\n' + f'{self.weightscale}'
+            print(self.scale_msg)
+        except:
+            print("Scales cannot be calculated because of CIF")
         if self.config["Verbose"]["results"]:
             self.res.printResults()
         return self.res
